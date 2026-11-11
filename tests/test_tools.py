@@ -92,3 +92,180 @@ def test_insufficient_data_detected():
 
 def test_sufficient_data_passes():
     assert check_data_sufficiency(n_activities=800, has_structure=True) == []
+
+
+# --- докинг (блок D1 + план Б по R1) ---
+
+SAMPLE_RECEPTOR_PDB = """\
+ATOM      1  N   ILE A 313      10.000  10.000  10.000  1.00 20.00           N
+ATOM      2  CA  ILE A 313      11.200  10.000  10.000  1.00 20.00           C
+ATOM      3  CB  ILE A 313      11.800  11.400  10.000  1.00 20.00           C
+ATOM      4  CG1 ILE A 313      12.200  11.800  11.400  1.00 20.00           C
+ATOM      5  OG1 THR A 315      14.000  12.000  12.000  1.00 18.00           O
+HETATM   50  C1  STI A 901      15.000  12.000  12.000  1.00 15.00           C
+HETATM   51  N1  STI A 901      17.000  14.000  16.000  1.00 15.00           N
+HETATM   99  O   HOH A 999      50.000  50.000  50.000  1.00 30.00           O
+END
+"""
+
+SAMPLE_POSE_PDB = """\
+HETATM    1  O1  LIG A   1      16.800  12.000  12.000  1.00  0.00           O
+HETATM    2  C1  LIG A   1      15.700  11.800  11.400  1.00  0.00           C
+END
+"""
+
+
+def test_docking_prepare_receptor_and_box_center(tmp_path):
+    from src.tools import docking
+
+    pdb_file = tmp_path / "1iep_sample.pdb"
+    pdb_file.write_text(SAMPLE_RECEPTOR_PDB, encoding="utf-8")
+
+    center = docking.extract_box_center(str(pdb_file), ligand_resname="STI")
+    assert center == (16.0, 13.0, 14.0)
+
+    pdbqt_path = docking.prepare_receptor(str(pdb_file))
+    assert pdbqt_path.endswith(".pdbqt")
+    content = (tmp_path / "1iep_sample.pdbqt").read_text(encoding="utf-8")
+    assert "ATOM" in content
+    assert "HOH" not in content
+    assert "STI" not in content
+
+
+def test_docking_dock_honest_provenance():
+    from src.schemas import Candidate
+    from src.tools import docking
+    from src.verifier import check_provenance, verify
+
+    pdbqt_str = docking.prepare_receptor(SAMPLE_RECEPTOR_PDB)
+    res_broken = docking.dock(BROKEN, pdbqt_str, center=(16.0, 13.0, 14.0))
+    assert res_broken.name == "dG"
+    assert res_broken.value is None
+
+    res_valid = docking.dock(ASPIRIN, pdbqt_str, center=(16.0, 13.0, 14.0))
+    assert res_valid.name == "dG"
+    assert res_valid.provenance is Provenance.COMPUTED
+    assert len(res_valid.source) >= 3
+
+    # Если Vina не установлена (план Б / R1), value=None не должен валить кандидата по порогу dG
+    mol = chem.describe(ASPIRIN, name="аспирин")
+    mol.values.append(res_valid)
+    cand = Candidate(molecule=mol)
+    assert check_provenance([cand]) == []
+    rep = verify([cand])
+    if res_valid.value is None:
+        assert len(rep.passed) == 1
+        assert any(f.name == "dG" and f.passed is None for f in cand.unchecked)
+
+
+def test_docking_interactions():
+    from src.tools import docking
+
+    contacts = docking.interactions(SAMPLE_POSE_PDB, SAMPLE_RECEPTOR_PDB)
+    assert len(contacts) >= 2
+    assert any("THR315" in c and "Водородная связь" in c for c in contacts)
+    assert any("ILE313" in c and "Гидрофобный контакт" in c for c in contacts)
+    assert docking.interactions("", SAMPLE_RECEPTOR_PDB) == []
+
+
+# --- QSAR (блок T4) ---
+
+def test_qsar_train_and_predict():
+    from src.tools import qsar
+    from src.verifier import check_provenance
+    from src.schemas import Candidate
+
+    assert qsar.ic50_nm_to_pic50(10.0) == 8.0
+    assert qsar.ic50_nm_to_pic50(1000.0) == 6.0
+    assert qsar.ic50_nm_to_pic50(-5.0) is None
+
+    # Набор реальных структур (ароматические ингибиторы vs малые алифатические молекулы)
+    train_smiles = [
+        IMATINIB,
+        "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1OCCCN1CCOCC1",  # гефитиниб
+        "COCCOC1=C(OCCOC)C=C2C(NC3=CC=CC(C#C)=C3)=NC=NC2=C1",  # эрлотиниб
+        "CS(=O)(=O)CCNCc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)o1",  # лапатиниб
+        "CN(C)C/C=C/C(=O)Nc1cc2c(Nc3ccc(F)c(Cl)c3)ncnc2cc1O[C@H]1CCOC1",  # афатиниб
+        "COc1cc(Nc2nccc(Nc3ccc4c(C)n[nH]c4c3)n2)cc(OC)c1OC",
+        "Cc1nc(Nc2ncc(C(=O)Nc3c(C)cccc3Cl)s2)cc(N2CCN(CCO)CC2)n1",  # дазатиниб
+        "Cc1ccc(C(=O)Nc2ccc(CN3CCN(C)CC3)c(C(F)(F)F)c2)cc1C#Cc1cnc2cccnn12",  # понатиниб
+        "COc1cc2c(Oc3ccc(NC(=O)C4(C(=O)Nc5ccc(F)cc5)CC4)cc3F)ccnc2cc1OCCCN1CCOCC1",  # кабозантиниб
+        "CNC(=O)c1cc(Oc2ccc(NC(=O)Nc3ccc(Cl)c(C(F)(F)F)c3)cc2)ccn1",  # сорафениб
+        ASPIRIN,
+        "CC(=O)Nc1ccc(O)cc1",  # парацетамол
+        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",  # ибупрофен
+        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",  # кофеин
+        "CCO",
+        "CCCO",
+        "CCCCO",
+        "CC(=O)O",
+        "CCC(=O)O",
+        "c1ccccc1",
+    ]
+    train_y = [
+        8.2, 8.5, 8.4, 8.1, 8.6, 7.9, 8.8, 8.7, 8.0, 7.8,
+        4.5, 4.3, 4.6, 4.2, 3.1, 3.2, 3.4, 3.0, 3.1, 3.5,
+    ]
+
+    model, metrics = qsar.train(train_smiles, train_y)
+    assert metrics.metric_name == "R2"
+    assert metrics.n_train == 16
+
+    pred_val = qsar.predict(model, metrics, IMATINIB)
+    assert pred_val.name == "pIC50"
+    assert pred_val.provenance is Provenance.PREDICTED
+    assert pred_val.model_metrics is not None
+    assert isinstance(pred_val.value, float)
+
+    mol = chem.describe(IMATINIB)
+    mol.values.append(pred_val)
+    assert check_provenance([Candidate(molecule=mol)]) == []
+
+    broken_pred = qsar.predict(model, metrics, BROKEN)
+    assert broken_pred.value is None
+
+
+# --- ADMET (блок T4 + риск R3) ---
+
+def test_admet_profile_and_classifier():
+    from src.tools import admet
+
+    admet.clear_models()
+    vals_asp = {v.name: v for v in admet.profile(ASPIRIN)}
+    vals_ima = {v.name: v for v in admet.profile(IMATINIB)}
+
+    assert vals_asp["LogS"].provenance is Provenance.COMPUTED
+    assert vals_ima["LogS"].provenance is Provenance.COMPUTED
+    # Аспирин существенно лучше растворим в воде, чем липофильный иматиниб
+    assert vals_asp["LogS"].value > vals_ima["LogS"].value
+    assert vals_ima["Brenk_Alerts"].provenance is Provenance.COMPUTED
+
+    # Без загруженной ML-модели hERG возвращается как not_computed (value=None), а не выдумка
+    assert vals_ima["hERG"].value is None
+
+    # После обучения классификатора hERG возвращается PREDICTED с обязательными ModelMetrics
+    smiles_cls = [
+        IMATINIB,
+        "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1OCCCN1CCOCC1",
+        "CS(=O)(=O)CCNCc1ccc(-c2ccc3ncnc(Nc4ccc(OCc5cccc(F)c5)c(Cl)c4)c3c2)o1",
+        "Cc1nc(Nc2ncc(C(=O)Nc3c(C)cccc3Cl)s2)cc(N2CCN(CCO)CC2)n1",
+        "Cc1ccc(C(=O)Nc2ccc(CN3CCN(C)CC3)c(C(F)(F)F)c2)cc1C#Cc1cnc2cccnn12",
+        "COc1cc2c(Oc3ccc(NC(=O)C4(C(=O)Nc5ccc(F)cc5)CC4)cc3F)ccnc2cc1OCCCN1CCOCC1",
+        ASPIRIN,
+        "CC(=O)Nc1ccc(O)cc1",
+        "CC(C)Cc1ccc(C(C)C(=O)O)cc1",
+        "CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+        "CCO",
+        "CC(=O)O",
+    ]
+    labels_cls = [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+    _, metrics = admet.train_classifier("hERG", smiles_cls, labels_cls)
+    assert metrics.metric_name == "ROC-AUC"
+
+    vals_after = {v.name: v for v in admet.profile(IMATINIB)}
+    herg_v = vals_after["hERG"]
+    assert herg_v.provenance is Provenance.PREDICTED
+    assert herg_v.model_metrics is not None
+    assert 0.0 <= herg_v.value <= 1.0
+    admet.clear_models()
+
