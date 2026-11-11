@@ -258,14 +258,7 @@ def _ligand_to_pdbqt(smiles: str) -> tuple[str | None, str | None]:
     """
     Строит 3D-конформер лиганда (ETKDGv3 + MMFF94) и переводит в PDBQT.
     Возвращает (pdbqt_block, pdb_block) или (None, None) при неудаче.
-    ВАЖНО: если у молекулы есть вращаемые связи (RotB > 0), а Meeko недоступен,
-    мы НЕ строим жёсткий PDBQT с одним ROOT и TORSDOF 0 — докинг гибкого лиганда
-    как абсолютно жёсткого тела дал бы ложное число ΔG со статусом COMPUTED.
     """
-    base_mol = chem.parse(smiles)
-    if base_mol is None:
-        return None, None
-
     pdb_block = chem.embed_3d(smiles)
     if not pdb_block:
         return None, None
@@ -287,13 +280,15 @@ def _ligand_to_pdbqt(smiles: str) -> tuple[str | None, str | None]:
         except Exception:
             pass
 
-    # Запасной путь без Meeko пишет один ROOT и TORSDOF 0.
-    # Это физически корректно ТОЛЬКО для жёстких молекул без вращаемых связей (например, бензола).
-    # Для молекул с вращаемыми связями (например, иматиниба с RotB=7) отказываемся строить PDBQT,
-    # чтобы Vina не вернула энергию случайного замороженного конформера под видом честного докинга.
-    rotb = Descriptors.NumRotatableBonds(base_mol)
-    if rotb > 0:
-        return None, None
+    # ЗАПАСНОЙ ПУТЬ БЕЗ MEEKO: записывается ОДИН ROOT и TORSDOF 0, то есть лиганд
+    # докуется АБСОЛЮТНО ЖЁСТКИМ. Для молекулы с вращаемыми связями Vina вернёт
+    # энергию одного случайного конформера, а не результат докинга — число будет
+    # выглядеть законным (computed, "AutoDock Vina"), но будет неверным.
+    # Молчаливое правдоподобное число — ровно то, против чего построен verifier.py,
+    # поэтому здесь мы отказываемся считать, а не считаем плохо.
+    n_rot = Descriptors.NumRotatableBonds(Chem.RemoveHs(mol))
+    if n_rot > 0:
+        return None, pdb_block
 
     try:
         AllChem.ComputeGasteigerCharges(mol)
@@ -338,8 +333,7 @@ def dock(
     По плану Б (риск R1): если Vina недоступна или входные данные некорректны,
     возвращает честный not_computed('dG', reason=...) без выдумывания чисел.
     """
-    mol = chem.parse(ligand_smiles)
-    if mol is None:
+    if not chem.is_valid(ligand_smiles):
         return not_computed("dG", "Невалидный SMILES лиганда", source="AutoDock Vina")
 
     if not receptor_pdbqt or not isinstance(receptor_pdbqt, str) or not receptor_pdbqt.strip():
@@ -354,17 +348,9 @@ def dock(
 
     ligand_pdbqt, _ = _ligand_to_pdbqt(ligand_smiles)
     if not ligand_pdbqt:
-        rotb = Descriptors.NumRotatableBonds(mol)
-        if rotb > 0 and not _MEEKO_OK:
-            return not_computed(
-                "dG",
-                f"У лиганда {rotb} вращаемых связей, а Meeko для построения дерева торсионов не установлен "
-                "(жёсткий докинг с TORSDOF 0 запрещён)",
-                source="Meeko + AutoDock Vina",
-            )
         return not_computed(
             "dG",
-            "Не удалось подготовить 3D-структуру лиганда в формате PDBQT",
+            "Не удалось сгенерировать 3D-конформер лиганда (RDKit ETKDGv3)",
             source="RDKit + AutoDock Vina",
         )
 
