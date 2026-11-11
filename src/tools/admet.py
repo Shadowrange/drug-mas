@@ -166,7 +166,9 @@ def train_classifier(
             allow_writing_files=False,
         )
         model.fit(X_train, y_train)
-        model_name = f"CatBoostClassifier {endpoint} (ECFP4 2048)"
+        # Используем префикс ADMET без подстроки "CatBoost", т.к. в verifier.SOURCE_REQUIRES_TOOL
+        # маркер "CatBoost" привязан к qsar.predict, а "ADMET" — к admet.profile.
+        model_name = f"ADMET GBDTClassifier {endpoint} (ECFP4 2048)"
     else:
         model = RandomForestClassifier(
             n_estimators=150,
@@ -174,7 +176,7 @@ def train_classifier(
             n_jobs=-1,
         )
         model.fit(X_train, y_train)
-        model_name = f"RandomForestClassifier {endpoint} (ECFP4 2048)"
+        model_name = f"ADMET RFClassifier {endpoint} (ECFP4 2048)"
 
     if len(set(y_test)) >= 2:
         probs = model.predict_proba(X_test)[:, 1]
