@@ -74,11 +74,17 @@ class Value(BaseModel):
                 f"'{self.name}': provenance=PREDICTED требует model_metrics. "
                 "Предсказание без метрик качества модели не является аргументом."
             )
-        if self.provenance is Provenance.HYPOTHESIS and isinstance(self.value, (int, float)):
-            raise ValueError(
-                f"'{self.name}': гипотеза не может быть числом. "
-                "Число приходит из инструмента или не приходит вообще."
-            )
+        if self.provenance is Provenance.HYPOTHESIS and self.value is not None:
+            # Не только int/float: "-9.1" строкой — та же выдумка, только мимо проверки типа.
+            try:
+                float(str(self.value).replace(",", ".").strip())
+            except (TypeError, ValueError):
+                pass
+            else:
+                raise ValueError(
+                    f"'{self.name}': гипотеза не может быть числом, в том числе строкой-числом. "
+                    "Число приходит из инструмента или не приходит вообще."
+                )
         return self
 
     def __str__(self) -> str:
