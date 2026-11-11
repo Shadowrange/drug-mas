@@ -21,7 +21,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from src.schemas import ModelMetrics, Value, computed, not_computed, predicted
+from src.schemas import ModelMetrics, Provenance, Value, computed, not_computed, predicted
 from src.tools import chem
 
 try:
@@ -63,15 +63,31 @@ def _get_admet_ai_model() -> Any | None:
         return None
 
 
+# Метрики линейной регрессии ESOL из оригинальной статьи:
+# John S. Delaney, "ESOL: Estimating Aqueous Solubility Directly from Molecular Structure",
+# J. Chem. Inf. Comput. Sci. 2004, 44 (3), 1000–1005 (DOI: 10.1021/ci034243x).
+# Обучающая выборка: n = 2874 малых органических молекул, R² = 0.69 (AAE = 0.75 log mol/L).
+ESOL_METRICS = ModelMetrics(
+    model_name="ADMET ESOL Linear Regression (Delaney 2004)",
+    n_train=2874,
+    metric_name="R2",
+    metric_value=0.69,
+    split="Delaney 2004 full set (n=2874, AAE=0.75)",
+)
+
+
 def esol_logs(mol_or_smiles: Chem.Mol | str) -> Value:
     """
-    Детерминированный расчёт водной растворимости LogS (моль/л) по уравнению ESOL
+    Оценка водной растворимости LogS (моль/л) по эмпирической регрессии ESOL
     (Delaney, J. Chem. Inf. Comput. Sci. 2004, 44, 1000–1005):
-    LogS = 0.16 - 0.63*cLogP - 0.0062*MW + 0.066*RotB - 0.74*AP
+    LogS = 0.16 - 0.63*cLogP - 0.0062*MW + 0.066*RotB - 0.74*AP.
+    Поскольку коэффициенты подогнаны регрессией на выборке из 2874 соединений (R²=0.69),
+    возвращается с provenance=PREDICTED и паспортными ModelMetrics работы 2004 года.
     """
+    src = f"ADMET ESOL (Delaney, J. Chem. Inf. Comput. Sci. 2004, 44:1000-1005; n_train=2874, R2=0.69)"
     mol = mol_or_smiles if isinstance(mol_or_smiles, Chem.Mol) else chem.parse(mol_or_smiles)
     if mol is None:
-        return not_computed("LogS", "Невалидный SMILES", source=f"{chem.RDKIT_SRC} ESOL (Delaney 2004)")
+        return not_computed("LogS", "Невалидный SMILES", source=src)
 
     clogp = Crippen.MolLogP(mol)
     mw = Descriptors.MolWt(mol)
@@ -81,11 +97,13 @@ def esol_logs(mol_or_smiles: Chem.Mol | str) -> Value:
     ap = (arom / heavy) if heavy > 0 else 0.0
 
     logs = 0.16 - 0.63 * clogp - 0.0062 * mw + 0.066 * rotb - 0.74 * ap
-    return computed(
-        "LogS",
-        round(float(logs), 2),
-        f"{chem.RDKIT_SRC} ESOL (Delaney 2004)",
+    return Value(
+        name="LogS",
+        value=round(float(logs), 2),
         units="log mol/L",
+        provenance=Provenance.PREDICTED,
+        source=src,
+        model_metrics=ESOL_METRICS,
         note=">-4 хорошая, -4..-6 умеренная, <-6 низкая растворимость",
     )
 

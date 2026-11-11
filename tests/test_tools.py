@@ -207,7 +207,19 @@ def test_docking_dock_honest_provenance():
     assert res_broken.name == "dG"
     assert res_broken.value is None
 
-    res_valid = docking.dock(ASPIRIN, pdbqt_str, center=(16.0, 13.0, 14.0))
+    # Без Meeko молекула с вращаемыми связями (иматиниб, RotB=7) НЕ должна конвертироваться
+    # в жёсткий PDBQT с TORSDOF 0, иначе Vina вернёт энергию случайного конформера.
+    if not docking._MEEKO_OK:
+        assert docking._ligand_to_pdbqt(IMATINIB) == (None, None)
+        res_ima = docking.dock(IMATINIB, pdbqt_str, center=(16.0, 13.0, 14.0))
+        assert res_ima.value is None
+        assert "вращаемых связей" in (res_ima.note or "")
+
+    # Жёсткая молекула без вращаемых связей (бензол, RotB=0) корректно собирается с TORSDOF 0
+    bz_pdbqt, bz_pdb = docking._ligand_to_pdbqt("c1ccccc1")
+    assert bz_pdbqt is not None and "TORSDOF 0" in bz_pdbqt and bz_pdb is not None
+
+    res_valid = docking.dock("c1ccccc1", pdbqt_str, center=(16.0, 13.0, 14.0))
     assert res_valid.name == "dG"
     assert res_valid.provenance is Provenance.COMPUTED
     assert len(res_valid.source) >= 3
@@ -302,8 +314,13 @@ def test_admet_profile_and_classifier():
     vals_asp = {v.name: v for v in admet.profile(ASPIRIN)}
     vals_ima = {v.name: v for v in admet.profile(IMATINIB)}
 
-    assert vals_asp["LogS"].provenance is Provenance.COMPUTED
-    assert vals_ima["LogS"].provenance is Provenance.COMPUTED
+    # ESOL (Delaney 2004) — эмпирическая линейная регрессия (n_train=2874, R2=0.69), поэтому PREDICTED
+    assert vals_asp["LogS"].provenance is Provenance.PREDICTED
+    assert vals_ima["LogS"].provenance is Provenance.PREDICTED
+    assert vals_asp["LogS"].model_metrics is not None
+    assert vals_asp["LogS"].model_metrics.n_train == 2874
+    assert vals_asp["LogS"].model_metrics.metric_name == "R2"
+    assert vals_asp["LogS"].model_metrics.metric_value == 0.69
     # Аспирин существенно лучше растворим в воде, чем липофильный иматиниб
     assert vals_asp["LogS"].value > vals_ima["LogS"].value
     assert vals_ima["Brenk_Alerts"].provenance is Provenance.COMPUTED
