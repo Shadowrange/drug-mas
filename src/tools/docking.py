@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, Descriptors
 
 from src.schemas import Value, computed, not_computed
 from src.tools import chem
@@ -279,6 +279,16 @@ def _ligand_to_pdbqt(smiles: str) -> tuple[str | None, str | None]:
                 return preparator.write_pdbqt_string(), pdb_block
         except Exception:
             pass
+
+    # ЗАПАСНОЙ ПУТЬ БЕЗ MEEKO: записывается ОДИН ROOT и TORSDOF 0, то есть лиганд
+    # докуется АБСОЛЮТНО ЖЁСТКИМ. Для молекулы с вращаемыми связями Vina вернёт
+    # энергию одного случайного конформера, а не результат докинга — число будет
+    # выглядеть законным (computed, "AutoDock Vina"), но будет неверным.
+    # Молчаливое правдоподобное число — ровно то, против чего построен verifier.py,
+    # поэтому здесь мы отказываемся считать, а не считаем плохо.
+    n_rot = Descriptors.NumRotatableBonds(Chem.RemoveHs(mol))
+    if n_rot > 0:
+        return None, pdb_block
 
     try:
         AllChem.ComputeGasteigerCharges(mol)
