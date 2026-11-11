@@ -250,7 +250,7 @@ def _predict_endpoint(endpoint: str, fp: np.ndarray) -> Value:
 def profile(smiles: str) -> list[Value]:
     """
     Комплексный ADMET-профиль молекулы:
-    1) LogS — водная растворимость по Делани ESOL (provenance=COMPUTED, RDKit)
+    1) LogS — водная растворимость по Делани ESOL (provenance=PREDICTED + ModelMetrics, RDKit)
     2) Brenk_Alerts — структурные токсикофоры Brenk (provenance=COMPUTED, RDKit)
     3) hERG, Ames, CYP3A4 — ML-предсказания токсичности и метаболизма
        (provenance=PREDICTED + ModelMetrics при наличии модели, иначе честный not_computed).

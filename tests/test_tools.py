@@ -207,6 +207,20 @@ def test_docking_dock_honest_provenance():
     assert res_broken.name == "dG"
     assert res_broken.value is None
 
+    # Без Meeko молекула с вращаемыми связями (иматиниб) НЕ конвертируется в жёсткий PDBQT с TORSDOF 0,
+    # при этом 3D-конформер (pdb_block) возвращается для честного различения причины отказа.
+    if not docking._MEEKO_OK:
+        ima_pdbqt, ima_pdb = docking._ligand_to_pdbqt(IMATINIB)
+        assert ima_pdbqt is None
+        assert ima_pdb is not None
+        res_ima = docking.dock(IMATINIB, pdbqt_str, center=(16.0, 13.0, 14.0))
+        assert res_ima.value is None
+        assert "вращаемые связи" in (res_ima.note or "")
+
+    # Жёсткая молекула без вращаемых связей (бензол, RotB=0) корректно собирается с TORSDOF 0
+    bz_pdbqt, bz_pdb = docking._ligand_to_pdbqt("c1ccccc1")
+    assert bz_pdbqt is not None and "TORSDOF 0" in bz_pdbqt and bz_pdb is not None
+
     res_valid = docking.dock(ASPIRIN, pdbqt_str, center=(16.0, 13.0, 14.0))
     assert res_valid.name == "dG"
     assert res_valid.provenance is Provenance.COMPUTED

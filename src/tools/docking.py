@@ -346,8 +346,14 @@ def dock(
     ):
         return not_computed("dG", "Некорректные координаты центра бокса докинга", source="AutoDock Vina")
 
-    ligand_pdbqt, _ = _ligand_to_pdbqt(ligand_smiles)
+    ligand_pdbqt, pdb_block = _ligand_to_pdbqt(ligand_smiles)
     if not ligand_pdbqt:
+        if pdb_block is not None:
+            return not_computed(
+                "dG",
+                "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)",
+                source="AutoDock Vina (план Б)",
+            )
         return not_computed(
             "dG",
             "Не удалось сгенерировать 3D-конформер лиганда (RDKit ETKDGv3)",
