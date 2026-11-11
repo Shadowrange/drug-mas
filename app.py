@@ -9,9 +9,9 @@
 Зона 3 — самое важное на защите: требование №5 должно быть ВИДНО на экране.
 
 TODO Р-C:
-  - заменить _fixture() на run_graph() из src/graph.py (OFFLINE=1);
+  - реализовать _run_real() поверх src.graph.run_graph (OFFLINE=1);
   - 3D-поза через stmol/py3Dmol;
-  - проверить шрифты и цвета бейджей на проекторе до пятницы.
+  - проверить цвета бейджей и шрифты на проекторе до пятницы.
 """
 from __future__ import annotations
 
@@ -28,13 +28,16 @@ from src.tools.chem import describe
 ASPIRIN = "CC(=O)Oc1ccccc1C(=O)O"
 GRAY, GREEN, RED = "#888", "#1a7f37", "#cf222e"
 
+# ← перед защитой: поставить False, _run_real() пойдёт в src.graph.
+# Пока True — на экране фикстура (реальный RDKit по аспирину + маркер FIXTURE).
+USE_FIXTURE: bool = True
+
 
 def _fixture() -> ScenarioResult:
-    """Числа computed — реальный RDKit по аспирину, не вписаны руками.
-    from_db, predicted, hypothesis — демонстрация бейджа: в source стоит
-    FIXTURE, чтобы это нельзя было спутать с реальным прогоном.
-    RotB-фильтр с порогом <= 2 — намеренный passed=False, чтобы на экране
-    было видно красное состояние (в Thresholds такого правила нет)."""
+    """computed — реальный RDKit по аспирину. from_db / predicted / hypothesis
+    помечены FIXTURE в source: это демонстрация бейджа, не результат прогона.
+    Ни одного выдуманного правила в FilterResult нет — пороги только из
+    chem.sa_ok и verifier.Thresholds."""
     mol = describe(ASPIRIN, name="аспирин (фикстура)", source="PubChem CID 2244")
     if mol is None:
         raise RuntimeError("RDKit не разобрал SMILES фикстуры")
@@ -57,7 +60,6 @@ def _fixture() -> ScenarioResult:
     ])
 
     sa = mol.numeric("SA_Score")
-    rotb = mol.numeric("RotB")
     cand = Candidate(
         molecule=mol,
         filters=[
@@ -70,9 +72,6 @@ def _fixture() -> ScenarioResult:
             FilterResult(name="SA_Score",
                          passed=sa is not None and sa <= 6.0,
                          detail=f"SA = {sa}", threshold="<= 6.0"),
-            FilterResult(name="RotB (демо)", passed=rotb is not None and rotb <= 2,
-                         detail=f"RotB = {rotb}",
-                         threshold="<= 2 (только для показа passed=False)"),
             FilterResult(name="dG", passed=None, detail="не посчитано",
                          threshold="<= -6.0"),
         ],
@@ -102,6 +101,16 @@ def _fixture() -> ScenarioResult:
     )
 
 
+def _run_real(query: str) -> ScenarioResult:
+    """TODO Р-C: return run_graph(query) из src.graph (OFFLINE=1).
+    Пока фикстура включена, сюда не попадаем. При USE_FIXTURE=False
+    падение громкое — по AGENTS.md, без пустого except."""
+    raise NotImplementedError(
+        "USE_FIXTURE=False, а _run_real() не реализован: "
+        "подключите run_graph() из src.graph (TODO Р-C)."
+    )
+
+
 def _render_values(cand: Candidate) -> None:
     rows: list[str] = []
     for v in cand.molecule.values:
@@ -113,11 +122,9 @@ def _render_values(cand: Candidate) -> None:
             val = str(v.value) + (f" {v.units}" if v.units else "")
             note = ""
         rows.append(
-            f"<tr><td>{v.name}</td>"
-            f"<td>{val}{note}</td>"
+            f"<tr><td>{v.name}</td><td>{val}{note}</td>"
             f"<td>{v.provenance.badge}</td>"
-            f"<td><span style='font-size:0.8em;color:{GRAY}'>{v.source}</span></td>"
-            f"</tr>"
+            f"<td><span style='font-size:0.8em;color:{GRAY}'>{v.source}</span></td></tr>"
         )
     st.markdown(
         "<table style='width:100%;border-collapse:collapse'>"
@@ -178,15 +185,21 @@ query = st.text_input(
     placeholder="Модифицируй иматиниб, повысив растворимость...",
 )
 if "result" not in st.session_state:
-    st.session_state["result"] = _fixture()
+    st.session_state["result"] = _fixture() if USE_FIXTURE else None
 if st.button("Запустить"):
-    # TODO Р-C: st.session_state["result"] = run_graph(query) при OFFLINE=1
-    st.session_state["result"] = _fixture()
+    st.session_state["result"] = _fixture() if USE_FIXTURE else _run_real(query)
 
-result: ScenarioResult = st.session_state["result"]
+result: ScenarioResult | None = st.session_state["result"]
+if result is None:
+    st.warning(
+        "USE_FIXTURE = False, а результат прогона не получен. "
+        "Подключите run_graph() в _run_real() (TODO Р-C)."
+    )
+    st.stop()
+
 if result.scenario == "fixture":
     st.info("Показана фикстура: graph.py ещё не подключён. "
-            "Значения 🧮 РАСЧЁТ — реальный RDKit по аспирину; "
+            "🧮 РАСЧЁТ — реальный RDKit по аспирину; "
             "🗄 БД, 📈 ПРОГНОЗ и 💭 ГИПОТЕЗА помечены FIXTURE в source.")
 
 # --- (b) лог вызовов инструментов ---
