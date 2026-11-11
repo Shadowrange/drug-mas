@@ -1,0 +1,17 @@
+{
+ "namespace": "pubchem_smiles",
+ "args": [
+  "imatinib"
+ ],
+ "kwargs": {},
+ "fetched_at": "2026-11-12 01:51:28",
+ "duration_s": 0.82,
+ "result": {
+  "query": "imatinib",
+  "smiles": "CC1=C(C=C(C=C1)NC(=O)C2=CC=C(C=C2)CN3CCN(CC3)C)NC4=NC=CC(=N4)C5=CN=CC=C5",
+  "cid": 5291,
+  "iupac": "4-[(4-methylpiperazin-1-yl)methyl]-N-[4-methyl-3-[(4-pyridin-3-ylpyrimidin-2-yl)amino]phenyl]benzamide",
+  "formula": "C29H31N7O",
+  "source": "PubChem CID 5291"
+ }
+}
