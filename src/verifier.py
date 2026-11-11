@@ -6,11 +6,16 @@
 
 Три исхода, которые нельзя путать:
   ok                   — кандидаты есть и прошли пороги
-  no_candidates_passed — кандидаты были, все провалили пороги (это РЕЗУЛЬТАТ)
+  no_candidates_passed — кандидаты были, все провалили пороги (это РЕЗУЛЬТАТ,
+                         и их надо ПОКАЗАТЬ с причинами отсева)
   insufficient_data    — данных не хватило, генерацию запускать нельзя (это ОТКАЗ)
 
 Классическая ошибка: считать «значение не посчитано» за «порог не пройден».
 Из-за неё система выдаёт уверенный рейтинг по пустым данным.
+
+Ключевая мысль: схема гарантирует НАЛИЧИЕ источника, а не его ПРАВДИВОСТЬ.
+Поэтому источник сверяется с журналом вызовов: значение с источником Vina
+не принимается, если в этом прогоне не было успешного вызова докинга.
 """
 
 from __future__ import annotations
@@ -25,6 +30,23 @@ from src.schemas import (
     ScenarioResult,
     ToolCall,
 )
+
+# Подстрока в source -> инструмент, который обязан был отработать в этом прогоне.
+SOURCE_REQUIRES_TOOL: dict[str, str] = {
+    "Vina": "dock",
+    "PLIP": "interactions",
+    "CatBoost": "qsar.predict",
+    "RandomForest": "qsar.predict",
+    "CHEMBL": "chembl_activities",
+    "PubChem": "pubchem_smiles",
+    "UniProt": "uniprot_target",
+    "PDB": "pdb_structure",
+    "ADMET": "admet.profile",
+}
+
+# Без этих величин кандидат не ранжируется: ранг по одному-двум числам —
+# это и есть уверенный рейтинг по пустым данным.
+REQUIRED_FOR_RANKING = ("LogP", "QED", "SA_Score")
 
 
 @dataclass
@@ -47,21 +69,58 @@ class VerificationReport:
     unverifiable: list[str] = field(default_factory=list)
 
 
-def check_provenance(candidates: list[Candidate]) -> list[str]:
+def check_provenance(
+    candidates: list[Candidate],
+    tool_calls: list[ToolCall] | None = None,
+    t: Thresholds | None = None,
+) -> dict[str, list[str]]:
     """
-    Последний рубеж. Pydantic уже не пропустил значение без source,
-    но проверяем ещё и осмысленность: PREDICTED без метрик модели,
-    HYPOTHESIS, попавшую в числовые поля ранжирования.
+    Возвращает {smiles: [проблемы]}. Непустой список = кандидата нельзя ранжировать.
+
+    Проверяет четыре вещи:
+      1. источник сверен с журналом успешных вызовов инструментов;
+      2. прогноз сопровождается осмысленными метриками модели;
+      3. гипотеза не используется как число;
+      4. источник вообще заполнен.
     """
-    problems: list[str] = []
+    t = t or Thresholds()
+    succeeded = {c.tool for c in (tool_calls or []) if c.ok}
+    problems: dict[str, list[str]] = {}
+
+    def add(smiles: str, msg: str) -> None:
+        problems.setdefault(smiles, []).append(msg)
+
     for c in candidates:
+        smi = c.molecule.smiles
         for v in c.molecule.values:
-            if v.provenance is Provenance.PREDICTED and v.model_metrics is None:
-                problems.append(f"{c.molecule.smiles}: '{v.name}' — прогноз без метрик модели")
-            if v.provenance is Provenance.HYPOTHESIS and v.name in {"dG", "pIC50", "QED", "LogP"}:
-                problems.append(f"{c.molecule.smiles}: '{v.name}' помечено как гипотеза, но используется как число")
             if not v.source or len(v.source) < 3:
-                problems.append(f"{c.molecule.smiles}: '{v.name}' без источника")
+                add(smi, f"'{v.name}' без источника")
+                continue
+
+            # 1. Подпись без вызова: строку "AutoDock Vina" может написать кто угодно.
+            for marker, tool in SOURCE_REQUIRES_TOOL.items():
+                if marker.lower() in v.source.lower() and v.value is not None:
+                    if tool_calls is None:
+                        add(smi, f"'{v.name}' ссылается на {marker}, но журнал вызовов не передан")
+                    elif tool not in succeeded:
+                        add(smi, f"'{v.name}' ссылается на {marker}, но успешного вызова {tool}() в этом прогоне не было")
+                    break
+
+            # 2. Прогноз с негодными метриками хуже гипотезы: выглядит проверенным.
+            if v.provenance is Provenance.PREDICTED:
+                m = v.model_metrics
+                if m is None:
+                    add(smi, f"'{v.name}' — прогноз без метрик модели")
+                else:
+                    if m.n_train < t.min_qsar_train:
+                        add(smi, f"'{v.name}' — модель обучена на {m.n_train} точках при пороге {t.min_qsar_train}")
+                    if m.metric_name in {"R2", "ROC-AUC"} and not (0.0 <= m.metric_value <= 1.0):
+                        add(smi, f"'{v.name}' — {m.metric_name} = {m.metric_value} вне допустимого диапазона")
+
+            # 3. Гипотеза в роли числа. Проверяем все имена, а не белый список.
+            if v.provenance is Provenance.HYPOTHESIS and v.value is not None:
+                add(smi, f"'{v.name}' помечено как гипотеза, но несёт значение")
+
     return problems
 
 
@@ -77,33 +136,57 @@ def _threshold_checks(c: Candidate, t: Thresholds) -> list[FilterResult]:
                                 detail="не посчитано" if val is None else detail, threshold=thr))
 
     logp = c.molecule.numeric("LogP")
-    check("LogP", logp, logp is not None and logp <= t.max_logp,
-          f"LogP = {logp}", f"<= {t.max_logp}")
+    check("LogP", logp, logp is not None and logp <= t.max_logp, f"LogP = {logp}", f"<= {t.max_logp}")
 
     qed = c.molecule.numeric("QED")
-    check("QED", qed, qed is not None and qed >= t.min_qed,
-          f"QED = {qed}", f">= {t.min_qed}")
+    check("QED", qed, qed is not None and qed >= t.min_qed, f"QED = {qed}", f">= {t.min_qed}")
 
     sa = c.molecule.numeric("SA_Score")
-    check("SA_Score", sa, sa is not None and sa <= t.max_sa,
-          f"SA = {sa}", f"<= {t.max_sa}")
+    check("SA_Score", sa, sa is not None and sa <= t.max_sa, f"SA = {sa}", f"<= {t.max_sa}")
 
     dg = c.molecule.numeric("dG")
-    check("dG", dg, dg is not None and dg <= t.max_dg,
-          f"ΔG = {dg} ккал/моль", f"<= {t.max_dg}")
+    check("dG", dg, dg is not None and dg <= t.max_dg, f"ΔG = {dg} ккал/моль", f"<= {t.max_dg}")
 
     return out
 
 
-def verify(candidates: list[Candidate], t: Thresholds | None = None) -> VerificationReport:
+def verify(
+    candidates: list[Candidate],
+    tool_calls: list[ToolCall] | None = None,
+    t: Thresholds | None = None,
+) -> VerificationReport:
     t = t or Thresholds()
     rep = VerificationReport()
-
-    for problem in check_provenance(candidates):
-        rep.unverifiable.append(problem)
+    problems = check_provenance(candidates, tool_calls, t)
 
     for c in candidates:
+        smi = c.molecule.smiles
         c.filters = (c.filters or []) + _threshold_checks(c, t)
+
+        # Претензия к происхождению ДИСКВАЛИФИЦИРУЕТ кандидата, а не уходит
+        # в примечание мелким шрифтом под рейтингом, где он стоит первым.
+        if smi in problems:
+            rep.unverifiable.extend(f"{smi}: {p}" for p in problems[smi])
+            c.filters.append(FilterResult(
+                name="Происхождение данных", passed=False,
+                detail="; ".join(problems[smi]), threshold="источник подтверждён журналом вызовов",
+            ))
+            rep.rejected.append(c)
+            continue
+
+        # Кандидат, у которого не посчитано НИЧЕГО, не «прошёл фильтры» —
+        # его просто нечем оценивать. Без этой ветки он получает rank=1.
+        missing_required = [n for n in REQUIRED_FOR_RANKING if c.molecule.numeric(n) is None]
+        if missing_required:
+            msg = f"не посчитано обязательное для ранжирования: {', '.join(missing_required)}"
+            rep.unverifiable.append(f"{smi}: {msg}")
+            c.filters.append(FilterResult(
+                name="Полнота данных", passed=False, detail=msg,
+                threshold=f"обязательны: {', '.join(REQUIRED_FOR_RANKING)}",
+            ))
+            rep.rejected.append(c)
+            continue
+
         if c.failed:
             rep.rejected.append(c)
         else:
@@ -115,15 +198,15 @@ def verify(candidates: list[Candidate], t: Thresholds | None = None) -> Verifica
         for c in rep.rejected:
             for f in c.failed:
                 by_rule[f.name] = by_rule.get(f.name, 0) + 1
+        hints = {
+            "LogP": f"добавляй полярные заместители (порог {t.max_logp})",
+            "SA_Score": f"упрощай скелет, меньше новых стереоцентров (порог {t.max_sa})",
+            "QED": f"держи MW в пределах 500 (порог {t.min_qed})",
+            "dG": f"сохраняй фармакофор исходного хита (порог {t.max_dg})",
+        }
         for rule, n in sorted(by_rule.items(), key=lambda x: -x[1]):
-            if rule == "LogP":
-                rep.feedback.append(f"{n} кандидатов с LogP выше {t.max_logp}: добавляй полярные заместители")
-            elif rule == "SA_Score":
-                rep.feedback.append(f"{n} кандидатов с SA выше {t.max_sa}: упрощай скелет, меньше новых стереоцентров")
-            elif rule == "QED":
-                rep.feedback.append(f"{n} кандидатов с QED ниже {t.min_qed}: держи MW в пределах 500")
-            elif rule == "dG":
-                rep.feedback.append(f"{n} кандидатов с ΔG хуже {t.max_dg}: сохраняй фарма­кофор исходного хита")
+            if rule in hints:
+                rep.feedback.append(f"{n} кандидатов отсеяно по {rule}: {hints[rule]}")
 
     return rep
 
@@ -168,6 +251,8 @@ def build_result(
     summary: str = "",
 ) -> ScenarioResult:
     """Единственная точка сборки ответа. Reporter не собирает ScenarioResult сам."""
+    limitations: list[str] = list(rep.unverifiable)
+
     if missing:
         status = "insufficient_data"
         candidates: list[Candidate] = []     # при отказе кандидатов быть не должно
@@ -177,12 +262,13 @@ def build_result(
         for i, c in enumerate(candidates, 1):
             c.rank = i
     else:
+        # Отсеянных ПОКАЗЫВАЕМ: «все кандидаты провалили пороги» — это результат
+        # с причинами, а не пустой экран, неотличимый от отказа.
         status = "no_candidates_passed"
-        candidates = []
+        candidates = rep.rejected
+        for c in candidates:
+            c.rank = None
 
-    limitations: list[str] = []
-    if rep.unverifiable:
-        limitations.extend(rep.unverifiable)
     unchecked = {f.name for c in (rep.passed + rep.rejected) for f in c.unchecked}
     if unchecked:
         limitations.append(f"не вычислялось и не учитывалось в ранжировании: {', '.join(sorted(unchecked))}")

@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import functools
 import hashlib
 import json
@@ -17,6 +18,10 @@ import os
 import time
 from pathlib import Path
 from typing import Any, Callable
+
+# Атрибут функции перезаписывался бы параллельными ветками графа, и бейдж
+# «из кэша» врал бы именно в том слое, который мы показываем жюри.
+LAST_FROM_CACHE: contextvars.ContextVar[bool] = contextvars.ContextVar("last_from_cache", default=False)
 
 CACHE_DIR = Path(os.getenv("CACHE_DIR", Path(__file__).resolve().parent.parent / "cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -48,7 +53,7 @@ def cached(namespace: str) -> Callable:
 
             if path.exists():
                 payload = json.loads(path.read_text(encoding="utf-8"))
-                wrapper.last_from_cache = True
+                LAST_FROM_CACHE.set(True)
                 return payload["result"]
 
             if OFFLINE:
@@ -59,6 +64,10 @@ def cached(namespace: str) -> Callable:
 
             t0 = time.time()
             result = fn(*args, **kwargs)
+            # БЕЗ default=str: numpy-float молча стал бы строкой "7.21", после
+            # перезапуска из кэша Molecule.numeric() вернул бы None, фильтр стал бы
+            # «не посчитано», и офлайн-прогон на защите вёл бы себя иначе, чем живой.
+            # Пусть падает громко здесь, а не на проекторе.
             path.write_text(
                 json.dumps(
                     {
@@ -71,14 +80,12 @@ def cached(namespace: str) -> Callable:
                     },
                     ensure_ascii=False,
                     indent=1,
-                    default=str,
                 ),
                 encoding="utf-8",
             )
-            wrapper.last_from_cache = False
+            LAST_FROM_CACHE.set(False)
             return result
 
-        wrapper.last_from_cache = False
         return wrapper
 
     return deco

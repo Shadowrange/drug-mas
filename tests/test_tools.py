@@ -7,7 +7,7 @@
 
 import pytest
 
-from src.schemas import ModelMetrics, Provenance, Value, computed, predicted
+from src.schemas import ModelMetrics, Molecule, Provenance, Value, computed, predicted
 from src.tools import chem
 from src.verifier import Thresholds, check_data_sufficiency
 
@@ -92,3 +92,70 @@ def test_insufficient_data_detected():
 
 def test_sufficient_data_passes():
     assert check_data_sufficiency(n_activities=800, has_structure=True) == []
+
+
+# --- дыры, найденные при ревью: каждая закрыта тестом ---
+
+from src.schemas import Candidate, Provenance, ToolCall, Value, computed, predicted
+from src.verifier import build_result, check_provenance, verify
+
+
+def _cand(smiles=ASPIRIN, extra=None):
+    m = chem.describe(smiles, name="test")
+    if extra:
+        m.values.extend(extra)
+    return Candidate(molecule=m, filters=chem.run_all_filters(smiles), score=0.7)
+
+
+def test_hypothesis_as_string_number_rejected():
+    """Д4: '-9.1' строкой — та же выдумка, только мимо проверки типа."""
+    with pytest.raises(Exception):
+        Value(name="ΔG", value="-9.1", provenance=Provenance.HYPOTHESIS, source="рассуждение LLM")
+
+
+def test_signed_without_call_is_disqualified():
+    """Д1: подпись 'AutoDock Vina' без успешного вызова докинга не принимается."""
+    c = _cand(extra=[computed("dG", -9.4, "AutoDock Vina 1.2.5", "ккал/моль")])
+    rep = verify([c], tool_calls=[])          # докинга в прогоне не было
+    assert rep.passed == [] and rep.rejected == [c]
+    assert any("успешного вызова dock()" in p for p in rep.unverifiable)
+
+
+def test_signed_with_call_is_accepted():
+    c = _cand(extra=[computed("dG", -9.4, "AutoDock Vina 1.2.5", "ккал/моль")])
+    rep = verify([c], tool_calls=[ToolCall(agent="Evaluator", tool="dock", args_summary="1IEP", ok=True)])
+    assert rep.passed == [c]
+
+
+def test_unverifiable_blocks_ranking():
+    """Д2: претензия к происхождению дисквалифицирует, а не уходит в сноску."""
+    c = _cand(extra=[computed("dG", -9.4, "AutoDock Vina 1.2.5", "ккал/моль")])
+    rep = verify([c], tool_calls=[])
+    r = build_result("q", "lead_optimization", rep, [], [])
+    assert r.status == "no_candidates_passed"
+    assert all(cc.rank is None for cc in r.candidates)
+
+
+def test_candidate_without_numbers_not_ranked():
+    """Д3: нечего считать — нечего ранжировать."""
+    bare = Candidate(molecule=Molecule(smiles=ASPIRIN, source="тест"), filters=[], score=None)
+    rep = verify([bare], tool_calls=[])
+    assert rep.passed == []
+    assert any("обязательное для ранжирования" in p for p in rep.unverifiable)
+
+
+def test_qsar_on_tiny_sample_rejected():
+    """Д5: R2=0.99 на 12 точках выглядит проверенным — и потому опаснее гипотезы."""
+    m = ModelMetrics(model_name="CatBoost", n_train=12, metric_name="R2", metric_value=0.99)
+    c = _cand(extra=[predicted("pIC50", 8.4, "CatBoost на CHEMBL203", m)])
+    problems = check_provenance([c], tool_calls=[ToolCall(agent="E", tool="qsar.predict", args_summary="", ok=True)])
+    assert any("12 точках" in p for p in problems[c.molecule.smiles])
+
+
+def test_rejected_candidates_are_shown():
+    """«Все провалили пороги» — это результат с причинами, а не пустой экран."""
+    c = _cand("CCCCCCCCCCCCCCCCCCCCc1ccccc1")   # заведомо высокий LogP
+    rep = verify([c], tool_calls=[])
+    r = build_result("q", "lead_optimization", rep, [], [])
+    assert r.status == "no_candidates_passed" and len(r.candidates) == 1
+    assert r.candidates[0].failed
