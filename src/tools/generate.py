@@ -45,6 +45,66 @@ def crem_db_available(db_name: str | None) -> bool:
     return bool(db_name) and Path(db_name).is_file()
 
 
+# Элементы, встречающиеся в лекарственных молекулах. Всё остальное —
+# артефакт мутаций SELFIES, а не кандидат.
+DRUGLIKE_ELEMENTS = {"H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Br", "I"}
+
+
+def chemically_sane(
+    smiles: str,
+    parent_fp=None,
+    min_similarity: float = 0.40,
+    size_ratio: tuple[float, float] = (0.6, 1.5),
+    parent_heavy: int | None = None,
+) -> tuple[bool, str]:
+    """
+    Отсев химического мусора, который STONED-SELFIES порождает легально.
+
+    Валидный SMILES ≠ осмысленная молекула. Мутации строки дают заряженные
+    ионы, илиды, радикалы и обрывки, не имеющие отношения к исходному хиту.
+    Все они проходят Липински и PAINS, попадают в рейтинг и выглядят как
+    предложенные кандидаты — а это прямой удар по критерию «обоснованность
+    предложенных молекул».
+
+    Возвращает (прошла, причина отказа).
+    """
+    from rdkit import DataStructs
+    from rdkit.Chem import Descriptors, rdFingerprintGenerator
+
+    mol = chem.parse(smiles)
+    if mol is None:
+        return False, "SMILES не разбирается"
+
+    if Chem.GetFormalCharge(mol) != 0:
+        return False, f"ненулевой формальный заряд ({Chem.GetFormalCharge(mol):+d})"
+
+    if Descriptors.NumRadicalElectrons(mol) > 0:
+        return False, "радикальные электроны"
+
+    bad = {a.GetSymbol() for a in mol.GetAtoms()} - DRUGLIKE_ELEMENTS
+    if bad:
+        return False, f"нелекарственные элементы: {', '.join(sorted(bad))}"
+
+    if parent_heavy:
+        lo, hi = size_ratio
+        n = mol.GetNumHeavyAtoms()
+        if not (parent_heavy * lo <= n <= parent_heavy * hi):
+            return False, f"размер вне диапазона: {n} тяжёлых атомов при исходных {parent_heavy}"
+
+    # Кумулены (C=C=C) и прочие цепочки двойных связей подряд — характерный
+    # артефакт мутаций SELFIES. Формально валидны, в лекарствах не встречаются.
+    if mol.HasSubstructMatch(Chem.MolFromSmarts("[*]=[*]=[*]")):
+        return False, "кумулен (две двойные связи подряд)"
+
+    if parent_fp is not None:
+        gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+        sim = DataStructs.TanimotoSimilarity(parent_fp, gen.GetFingerprint(mol))
+        if sim < min_similarity:
+            return False, f"сходство с исходной молекулой {sim:.2f} < {min_similarity}"
+
+    return True, ""
+
+
 def _mutate_selfies(parent_smiles: str, n: int, seed: int) -> list[str]:
     """
     STONED-SELFIES: точечные мутации строки SELFIES. Любая строка SELFIES
@@ -68,11 +128,11 @@ def _mutate_selfies(parent_smiles: str, n: int, seed: int) -> list[str]:
 
     out: list[str] = []
     # Запас попыток: часть мутаций даст дубликаты или исходную молекулу.
-    for _ in range(n * 40):
+    for _ in range(n * 150):
         if len(out) >= n:
             break
         mutated = list(tokens)
-        for _ in range(rng.randint(1, 2)):
+        for _ in range(1):
             op = rng.choice(("replace", "insert", "delete"))
             pos = rng.randrange(len(mutated))
             if op == "replace":
@@ -114,6 +174,7 @@ def mutate(
     backend: str = "crem",
     db_name: str | None = None,
     seed: int = 0xF00D,
+    min_similarity: float = 0.40,
 ) -> list[Molecule]:
     """
     Порождает до n новых валидных уникальных структур вокруг исходной.
@@ -155,20 +216,48 @@ def mutate(
     if reason:
         src += f" (fallback: {reason})"
 
+    from rdkit.Chem import rdFingerprintGenerator
+
+    parent_mol = chem.parse(parent_canon)
+    _gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+    parent_fp = _gen.GetFingerprint(parent_mol)
+    parent_heavy = parent_mol.GetNumHeavyAtoms()
+
     seen: set[str] = {parent_canon}
     out: list[Molecule] = []
+    rejected: dict[str, int] = {}
     for smi in raw:
         canon = chem.canonical(smi)
         if canon is None or canon in seen:
             continue
         seen.add(canon)
+
+        ok, why = chemically_sane(
+            canon,
+            parent_fp=parent_fp,
+            min_similarity=min_similarity,
+            parent_heavy=parent_heavy,
+        )
+        if not ok:
+            key = why.split(":")[0].split("(")[0].strip()
+            rejected[key] = rejected.get(key, 0) + 1
+            continue
+
         m = chem.describe(canon, source=src)
         if m is None:
             continue
         out.append(m)
         if len(out) >= n:
             break
+
+    # Статистика отсева нужна Reporter'у и на защите: «из N порождённых
+    # структур M отброшены как химически несостоятельные» — это аргумент
+    # за систему, а не признание слабости.
+    mutate.last_rejected = dict(sorted(rejected.items(), key=lambda x: -x[1]))
     return out
+
+
+mutate.last_rejected = {}
 
 
 def exclude_known(candidates: list[Molecule], rejected_smiles: list[str]) -> list[Molecule]:
