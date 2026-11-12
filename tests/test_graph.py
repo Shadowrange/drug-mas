@@ -371,3 +371,15 @@ def test_supervisor_drops_invented_names():
     )
     assert task["parent_name"] != "гефитиниб"
     assert task["target_name"] != "KRAS"
+
+
+def test_postfilter_ignores_numbers_inside_identifiers():
+    """«pIC50» давало ложное 50, «CHEMBL203» — ложное 203, и постфильтр
+    подменял нормальный текст LLM детерминированным."""
+    from src.agents.reporter import _extraneous_numbers
+    from src.schemas import ScenarioResult
+
+    res = ScenarioResult(status="no_candidates_passed", query="q", scenario="s", candidates=[])
+    assert _extraneous_numbers("Предсказанный pIC50 получен QSAR-моделью.", res) == []
+    assert _extraneous_numbers("Выборка из ChEMBL203 использована для обучения.", res) == []
+    assert _extraneous_numbers("ΔG составила -9.4 ккал/моль", res) == ["-9.4"]

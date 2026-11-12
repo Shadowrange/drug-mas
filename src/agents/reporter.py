@@ -160,7 +160,10 @@ def _postfilter_insufficient_data_smiles(summary: str) -> tuple[str, bool]:
     return " ".join(kept_tokens), removed
 
 
-_NUM_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
+# Число не должно выцепляться из идентификатора: «pIC50» давало 50,
+# «CHEMBL203» давало 203, и постфильтр ложно срабатывал, подменяя
+# нормальный текст LLM детерминированным.
+_NUM_RE = re.compile(r"(?<![A-Za-zА-Яа-яЁё0-9_])-?\d+(?:[.,]\d+)?")
 
 
 def _allowed_numbers(result: ScenarioResult) -> set[str]:
