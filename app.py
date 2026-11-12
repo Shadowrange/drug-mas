@@ -122,7 +122,10 @@ def _render_values(cand: Candidate) -> None:
             note = ""
         rows.append(
             f"<tr><td>{v.name}</td><td>{val}{note}</td>"
-            f"<td>{v.provenance.badge}</td>"
+            # У несуществующего значения не может быть категории происхождения.
+            # not_computed() ставит COMPUTED по умолчанию, и строка с прочерком
+            # получала бейдж «РАСЧЁТ» — то есть заявляла расчёт, которого не было.
+            f"<td>{'⬜ НЕ ВЫЧИСЛЯЛОСЬ' if v.value is None else v.provenance.badge}</td>"
             f"<td><span style='font-size:0.8em;color:{GRAY}'>{v.source}</span></td></tr>"
         )
     st.markdown(
@@ -152,6 +155,19 @@ def _render_filters(cand: Candidate) -> None:
         )
 
 
+# Только эти четыре инструмента ходят во внешние базы. Для остальных
+# флаг from_cache смысла не имеет: RDKit, генератор и докинг считают
+# локально, и подпись «сеть» у них — такая же неверная разметка источника,
+# против которой построен весь проект.
+NETWORK_TOOLS = {"pubchem_smiles", "chembl_activities", "uniprot_target", "pdb_structure"}
+
+
+def _call_origin(c: ToolCall) -> str:
+    if c.tool not in NETWORK_TOOLS:
+        return "🧮 локально"
+    return "🗄 из кэша" if c.from_cache else "🌐 сеть"
+
+
 def _render_tool_calls(calls: list[ToolCall]) -> None:
     if not calls:
         st.caption("Вызовов ещё не было.")
@@ -163,7 +179,7 @@ def _render_tool_calls(calls: list[ToolCall]) -> None:
                 "Инструмент": c.tool,
                 "Аргументы": c.args_summary,
                 "OK": "✅" if c.ok else "❌",
-                "Источник": "🗄 из кэша" if c.from_cache else "🌐 сеть",
+                "Источник": _call_origin(c),
                 "t, с": c.duration_s,
                 "Ошибка": c.error or "",
             }
