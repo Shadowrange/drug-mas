@@ -9,3 +9,5 @@ venv/
 *.sdf
 crem_db/
 !cache/
+
+app.py.backup*
