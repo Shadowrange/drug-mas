@@ -305,3 +305,24 @@ def test_routers_unit():
     assert route_verify({"verification": VerificationReport(passed=[cand]), "loop": 2}) == "reporter"
     assert route_verify({"verification": VerificationReport(passed=[]), "loop": 1}) == "generator"
     assert route_verify({"verification": VerificationReport(passed=[]), "loop": 2}) == "reporter"
+
+
+# --- разбор запроса: мишенью не может быть предлог ---
+
+def test_target_extraction_rejects_russian_stopwords():
+    """«...мишени с малым числом активностей» давало target_name='с',
+    и отказ выглядел багом разбора, а не принципиальным отказом."""
+    from src.agents.supervisor import _extract_target_name
+
+    assert _extract_target_name(
+        "Предложи ингибиторы для малоизученной мишени с малым числом активностей в ChEMBL"
+    ) is None
+    assert _extract_target_name("Предложи ингибиторы для мишени белка, который плохо изучен") is None
+
+
+def test_target_extraction_keeps_real_gene_symbols():
+    from src.agents.supervisor import _extract_target_name
+
+    assert _extract_target_name("Найди известные ингибиторы EGFR (UniProt P00533)") == "EGFR"
+    assert _extract_target_name("сохранив сродство к BCR-ABL1") == "BCR-ABL1"
+    assert _extract_target_name("Предложи ингибиторы для мишени CDK2") == "CDK2"

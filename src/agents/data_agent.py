@@ -275,7 +275,11 @@ def data_agent(state: GraphState) -> dict[str, Any]:
                 ok=False,
                 from_cache=False,
                 duration_s=0.0,
-                error=f"Для мишени '{target_label}' не найден подтверждённый ChEMBL ID",
+                error=(
+                    "В запросе не названа конкретная мишень, поиск активностей невозможен"
+                    if target_label == "unknown"
+                    else f"Для мишени '{target_label}' не найден подтверждённый ChEMBL ID"
+                ),
             )
         )
 
