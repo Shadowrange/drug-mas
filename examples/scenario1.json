@@ -1,0 +1,1242 @@
+{
+  "status": "ok",
+  "query": "Модифицируй структуру иматиниба так, чтобы повысить растворимость и сохранить сродство к BCR-ABL1, отфильтруй токсичные аналоги",
+  "scenario": "lead_optimization",
+  "candidates": [
+    {
+      "molecule": {
+        "smiles": "CN1CCN(CC2=CC(=O)NC=CC=CCC(Nc3nccc(-c4cccnc4)n3)=CC=C2)CC1",
+        "name": null,
+        "inchikey": "DGEGDVHEKVBQJO-UHFFFAOYSA-N",
+        "source": "сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)",
+        "values": [
+          {
+            "name": "MW",
+            "value": 469.59,
+            "units": "Da",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.MolWt",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "LogP",
+            "value": 3.15,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Crippen.MolLogP",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "TPSA",
+            "value": 86.28,
+            "units": "Å²",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.TPSA",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBD",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHDonors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBA",
+            "value": 7.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHAcceptors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "RotB",
+            "value": 5.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumRotatableBonds",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HeavyAtoms",
+            "value": 35.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Mol.GetNumHeavyAtoms",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "Rings",
+            "value": 4.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.RingCount",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "QED",
+            "value": 0.696,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 QED.qed",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "FormalCharge",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Chem.GetFormalCharge",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "SA_Score",
+            "value": 3.82,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Contrib SA_Score (Ertl & Schuffenhauer 2009)",
+            "model_metrics": null,
+            "note": "1 = легко синтезировать, 10 = тяжело"
+          },
+          {
+            "name": "LogS",
+            "value": -4.66,
+            "units": "log mol/L",
+            "provenance": "predicted",
+            "source": "ESOL (Delaney 2004) по дескрипторам RDKit 2026.09.2",
+            "model_metrics": {
+              "model_name": "ESOL (Delaney 2004), линейная регрессия",
+              "n_train": 2874,
+              "metric_name": "AAE",
+              "metric_value": 0.83,
+              "split": "валидационные наборы оригинальной работы"
+            },
+            "note": null
+          },
+          {
+            "name": "Brenk_Alerts",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 FilterCatalog.BRENK (Brenk et al. 2008)",
+            "model_metrics": null,
+            "note": "токсикофоров Brenk не обнаружено"
+          },
+          {
+            "name": "hERG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель hERG (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "Ames",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель Ames (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "CYP3A4",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель CYP3A4 (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "pIC50",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "не вычислялось",
+            "model_metrics": null,
+            "note": "QSAR-модель в этом прогоне не обучалась"
+          },
+          {
+            "name": "dG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "AutoDock Vina (план Б)",
+            "model_metrics": null,
+            "note": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+          }
+        ]
+      },
+      "parent_smiles": "Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1",
+      "filters": [
+        {
+          "name": "Lipinski",
+          "passed": true,
+          "detail": "нарушений нет",
+          "threshold": "допускается не более 1 нарушения"
+        },
+        {
+          "name": "PAINS",
+          "passed": true,
+          "detail": "совпадений нет",
+          "threshold": "совпадений быть не должно"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 3.82",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "LogP",
+          "passed": true,
+          "detail": "LogP = 3.15",
+          "threshold": "<= 5.0"
+        },
+        {
+          "name": "QED",
+          "passed": true,
+          "detail": "QED = 0.696",
+          "threshold": ">= 0.3"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 3.82",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "dG",
+          "passed": null,
+          "detail": "не посчитано",
+          "threshold": "<= -6.0"
+        }
+      ],
+      "score": 0.612,
+      "rank": 1
+    },
+    {
+      "molecule": {
+        "smiles": "CN1CCN(Cc2ccc(C(=O)Nc3cccc(Nc4nccc(-c5cccnc5)n4)c3)cc2)CC1",
+        "name": null,
+        "inchikey": "JHMBUEWQJDGKGS-UHFFFAOYSA-N",
+        "source": "сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)",
+        "values": [
+          {
+            "name": "MW",
+            "value": 479.59,
+            "units": "Da",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.MolWt",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "LogP",
+            "value": 4.28,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Crippen.MolLogP",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "TPSA",
+            "value": 86.28,
+            "units": "Å²",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.TPSA",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBD",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHDonors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBA",
+            "value": 7.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHAcceptors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "RotB",
+            "value": 7.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumRotatableBonds",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HeavyAtoms",
+            "value": 36.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Mol.GetNumHeavyAtoms",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "Rings",
+            "value": 5.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.RingCount",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "QED",
+            "value": 0.409,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 QED.qed",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "FormalCharge",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Chem.GetFormalCharge",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "SA_Score",
+            "value": 2.27,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Contrib SA_Score (Ertl & Schuffenhauer 2009)",
+            "model_metrics": null,
+            "note": "1 = легко синтезировать, 10 = тяжело"
+          },
+          {
+            "name": "LogS",
+            "value": -5.54,
+            "units": "log mol/L",
+            "provenance": "predicted",
+            "source": "ESOL (Delaney 2004) по дескрипторам RDKit 2026.09.2",
+            "model_metrics": {
+              "model_name": "ESOL (Delaney 2004), линейная регрессия",
+              "n_train": 2874,
+              "metric_name": "AAE",
+              "metric_value": 0.83,
+              "split": "валидационные наборы оригинальной работы"
+            },
+            "note": null
+          },
+          {
+            "name": "Brenk_Alerts",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 FilterCatalog.BRENK (Brenk et al. 2008)",
+            "model_metrics": null,
+            "note": "токсикофоров Brenk не обнаружено"
+          },
+          {
+            "name": "hERG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель hERG (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "Ames",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель Ames (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "CYP3A4",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель CYP3A4 (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "pIC50",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "не вычислялось",
+            "model_metrics": null,
+            "note": "QSAR-модель в этом прогоне не обучалась"
+          },
+          {
+            "name": "dG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "AutoDock Vina (план Б)",
+            "model_metrics": null,
+            "note": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+          }
+        ]
+      },
+      "parent_smiles": "Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1",
+      "filters": [
+        {
+          "name": "Lipinski",
+          "passed": true,
+          "detail": "нарушений нет",
+          "threshold": "допускается не более 1 нарушения"
+        },
+        {
+          "name": "PAINS",
+          "passed": true,
+          "detail": "совпадений нет",
+          "threshold": "совпадений быть не должно"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 2.27",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "LogP",
+          "passed": true,
+          "detail": "LogP = 4.28",
+          "threshold": "<= 5.0"
+        },
+        {
+          "name": "QED",
+          "passed": true,
+          "detail": "QED = 0.409",
+          "threshold": ">= 0.3"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 2.27",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "dG",
+          "passed": null,
+          "detail": "не посчитано",
+          "threshold": "<= -6.0"
+        }
+      ],
+      "score": 0.5155,
+      "rank": 2
+    },
+    {
+      "molecule": {
+        "smiles": "C#CC(=CC=CC(=O)NC1=CC(=CC)C(Nc2nccc(-c3cccnc3)n2)=CC1)CN1CCN(C)CC1",
+        "name": null,
+        "inchikey": "PUVFXESIXBVVSC-UHFFFAOYSA-N",
+        "source": "сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)",
+        "values": [
+          {
+            "name": "MW",
+            "value": 507.64,
+            "units": "Da",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.MolWt",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "LogP",
+            "value": 3.55,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Crippen.MolLogP",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "TPSA",
+            "value": 86.28,
+            "units": "Å²",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.TPSA",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBD",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHDonors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBA",
+            "value": 7.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHAcceptors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "RotB",
+            "value": 8.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumRotatableBonds",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HeavyAtoms",
+            "value": 38.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Mol.GetNumHeavyAtoms",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "Rings",
+            "value": 4.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.RingCount",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "QED",
+            "value": 0.321,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 QED.qed",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "FormalCharge",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Chem.GetFormalCharge",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "SA_Score",
+            "value": 3.73,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Contrib SA_Score (Ertl & Schuffenhauer 2009)",
+            "model_metrics": null,
+            "note": "1 = легко синтезировать, 10 = тяжело"
+          },
+          {
+            "name": "LogS",
+            "value": -4.93,
+            "units": "log mol/L",
+            "provenance": "predicted",
+            "source": "ESOL (Delaney 2004) по дескрипторам RDKit 2026.09.2",
+            "model_metrics": {
+              "model_name": "ESOL (Delaney 2004), линейная регрессия",
+              "n_train": 2874,
+              "metric_name": "AAE",
+              "metric_value": 0.83,
+              "split": "валидационные наборы оригинальной работы"
+            },
+            "note": null
+          },
+          {
+            "name": "Brenk_Alerts",
+            "value": 3.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 FilterCatalog.BRENK (Brenk et al. 2008)",
+            "model_metrics": null,
+            "note": "срабатывания: Michael_acceptor_1, polyene, triple_bond"
+          },
+          {
+            "name": "hERG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель hERG (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "Ames",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель Ames (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "CYP3A4",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель CYP3A4 (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "pIC50",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "не вычислялось",
+            "model_metrics": null,
+            "note": "QSAR-модель в этом прогоне не обучалась"
+          },
+          {
+            "name": "dG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "AutoDock Vina (план Б)",
+            "model_metrics": null,
+            "note": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+          }
+        ]
+      },
+      "parent_smiles": "Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1",
+      "filters": [
+        {
+          "name": "Lipinski",
+          "passed": true,
+          "detail": "нарушено: MW <= 500",
+          "threshold": "допускается не более 1 нарушения"
+        },
+        {
+          "name": "PAINS",
+          "passed": true,
+          "detail": "совпадений нет",
+          "threshold": "совпадений быть не должно"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 3.73",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "LogP",
+          "passed": true,
+          "detail": "LogP = 3.55",
+          "threshold": "<= 5.0"
+        },
+        {
+          "name": "QED",
+          "passed": true,
+          "detail": "QED = 0.321",
+          "threshold": ">= 0.3"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 3.73",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "dG",
+          "passed": null,
+          "detail": "не посчитано",
+          "threshold": "<= -6.0"
+        }
+      ],
+      "score": 0.3687,
+      "rank": 3
+    },
+    {
+      "molecule": {
+        "smiles": "C=CC(=CC=CC(=O)Nc1ccc(C)c(Nc2nccc(-c3cccnc3)n2)c1)CN1CCN(C)CC1",
+        "name": null,
+        "inchikey": "BQBTZKXYBZYMBD-UHFFFAOYSA-N",
+        "source": "сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)",
+        "values": [
+          {
+            "name": "MW",
+            "value": 495.63,
+            "units": "Da",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.MolWt",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "LogP",
+            "value": 4.45,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Crippen.MolLogP",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "TPSA",
+            "value": 86.28,
+            "units": "Å²",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.TPSA",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBD",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHDonors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBA",
+            "value": 7.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHAcceptors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "RotB",
+            "value": 9.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumRotatableBonds",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HeavyAtoms",
+            "value": 37.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Mol.GetNumHeavyAtoms",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "Rings",
+            "value": 4.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.RingCount",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "QED",
+            "value": 0.335,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 QED.qed",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "FormalCharge",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Chem.GetFormalCharge",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "SA_Score",
+            "value": 2.93,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Contrib SA_Score (Ertl & Schuffenhauer 2009)",
+            "model_metrics": null,
+            "note": "1 = легко синтезировать, 10 = тяжело"
+          },
+          {
+            "name": "LogS",
+            "value": -5.48,
+            "units": "log mol/L",
+            "provenance": "predicted",
+            "source": "ESOL (Delaney 2004) по дескрипторам RDKit 2026.09.2",
+            "model_metrics": {
+              "model_name": "ESOL (Delaney 2004), линейная регрессия",
+              "n_train": 2874,
+              "metric_name": "AAE",
+              "metric_value": 0.83,
+              "split": "валидационные наборы оригинальной работы"
+            },
+            "note": null
+          },
+          {
+            "name": "Brenk_Alerts",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 FilterCatalog.BRENK (Brenk et al. 2008)",
+            "model_metrics": null,
+            "note": "срабатывания: Michael_acceptor_1, polyene"
+          },
+          {
+            "name": "hERG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель hERG (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "Ames",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель Ames (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "CYP3A4",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель CYP3A4 (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "pIC50",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "не вычислялось",
+            "model_metrics": null,
+            "note": "QSAR-модель в этом прогоне не обучалась"
+          },
+          {
+            "name": "dG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "AutoDock Vina (план Б)",
+            "model_metrics": null,
+            "note": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+          }
+        ]
+      },
+      "parent_smiles": "Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1",
+      "filters": [
+        {
+          "name": "Lipinski",
+          "passed": true,
+          "detail": "нарушений нет",
+          "threshold": "допускается не более 1 нарушения"
+        },
+        {
+          "name": "PAINS",
+          "passed": true,
+          "detail": "совпадений нет",
+          "threshold": "совпадений быть не должно"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 2.93",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "LogP",
+          "passed": true,
+          "detail": "LogP = 4.45",
+          "threshold": "<= 5.0"
+        },
+        {
+          "name": "QED",
+          "passed": true,
+          "detail": "QED = 0.335",
+          "threshold": ">= 0.3"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 2.93",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "dG",
+          "passed": null,
+          "detail": "не посчитано",
+          "threshold": "<= -6.0"
+        }
+      ],
+      "score": 0.3551,
+      "rank": 4
+    },
+    {
+      "molecule": {
+        "smiles": "C=NC=CC=Cc1ccnc(Nc2cc(NC(=O)c3ccc(CN4CCN(C)CC4)cc3)ccc2C)n1",
+        "name": null,
+        "inchikey": "DVGCADVCPIOUFD-UHFFFAOYSA-N",
+        "source": "сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)",
+        "values": [
+          {
+            "name": "MW",
+            "value": 495.63,
+            "units": "Da",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.MolWt",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "LogP",
+            "value": 4.76,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Crippen.MolLogP",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "TPSA",
+            "value": 85.75,
+            "units": "Å²",
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.TPSA",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBD",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHDonors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HBA",
+            "value": 7.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumHAcceptors",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "RotB",
+            "value": 9.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.NumRotatableBonds",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "HeavyAtoms",
+            "value": 37.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Mol.GetNumHeavyAtoms",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "Rings",
+            "value": 4.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Descriptors.RingCount",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "QED",
+            "value": 0.329,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 QED.qed",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "FormalCharge",
+            "value": 0.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Chem.GetFormalCharge",
+            "model_metrics": null,
+            "note": null
+          },
+          {
+            "name": "SA_Score",
+            "value": 2.9,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 Contrib SA_Score (Ertl & Schuffenhauer 2009)",
+            "model_metrics": null,
+            "note": "1 = легко синтезировать, 10 = тяжело"
+          },
+          {
+            "name": "LogS",
+            "value": -5.68,
+            "units": "log mol/L",
+            "provenance": "predicted",
+            "source": "ESOL (Delaney 2004) по дескрипторам RDKit 2026.09.2",
+            "model_metrics": {
+              "model_name": "ESOL (Delaney 2004), линейная регрессия",
+              "n_train": 2874,
+              "metric_name": "AAE",
+              "metric_value": 0.83,
+              "split": "валидационные наборы оригинальной работы"
+            },
+            "note": null
+          },
+          {
+            "name": "Brenk_Alerts",
+            "value": 2.0,
+            "units": null,
+            "provenance": "computed",
+            "source": "RDKit 2026.09.2 FilterCatalog.BRENK (Brenk et al. 2008)",
+            "model_metrics": null,
+            "note": "срабатывания: imine_1, polyene"
+          },
+          {
+            "name": "hERG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель hERG (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "Ames",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель Ames (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "CYP3A4",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "ADMET (модель недоступна)",
+            "model_metrics": null,
+            "note": "ML-модель CYP3A4 (ADMET-AI / TDC) не загружена в окружении (план Б по риску R3)"
+          },
+          {
+            "name": "pIC50",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "не вычислялось",
+            "model_metrics": null,
+            "note": "QSAR-модель в этом прогоне не обучалась"
+          },
+          {
+            "name": "dG",
+            "value": null,
+            "units": null,
+            "provenance": "computed",
+            "source": "не вычислялось",
+            "model_metrics": null,
+            "note": "не вошёл в шортлист докинга (топ-5)"
+          }
+        ]
+      },
+      "parent_smiles": "Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1",
+      "filters": [
+        {
+          "name": "Lipinski",
+          "passed": true,
+          "detail": "нарушений нет",
+          "threshold": "допускается не более 1 нарушения"
+        },
+        {
+          "name": "PAINS",
+          "passed": true,
+          "detail": "совпадений нет",
+          "threshold": "совпадений быть не должно"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 2.9",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "LogP",
+          "passed": true,
+          "detail": "LogP = 4.76",
+          "threshold": "<= 5.0"
+        },
+        {
+          "name": "QED",
+          "passed": true,
+          "detail": "QED = 0.329",
+          "threshold": ">= 0.3"
+        },
+        {
+          "name": "SA_Score",
+          "passed": true,
+          "detail": "SA = 2.9",
+          "threshold": "<= 6.0"
+        },
+        {
+          "name": "dG",
+          "passed": null,
+          "detail": "не посчитано",
+          "threshold": "<= -6.0"
+        }
+      ],
+      "score": 0.3406,
+      "rank": 5
+    }
+  ],
+  "missing": [],
+  "tool_calls": [
+    {
+      "agent": "Data",
+      "tool": "pubchem_smiles",
+      "args_summary": "imatinib",
+      "ok": true,
+      "from_cache": true,
+      "duration_s": 0.002,
+      "error": null
+    },
+    {
+      "agent": "Data",
+      "tool": "chem.describe",
+      "args_summary": "imatinib",
+      "ok": true,
+      "from_cache": false,
+      "duration_s": 0.218,
+      "error": null
+    },
+    {
+      "agent": "Data",
+      "tool": "pdb_structure",
+      "args_summary": "1IEP",
+      "ok": true,
+      "from_cache": true,
+      "duration_s": 0.003,
+      "error": null
+    },
+    {
+      "agent": "Generator",
+      "tool": "generate.mutate",
+      "args_summary": "backend=crem, n=25, loop=1",
+      "ok": true,
+      "from_cache": false,
+      "duration_s": 0.035,
+      "error": null
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "chem.run_all_filters",
+      "args_summary": "n=7",
+      "ok": true,
+      "from_cache": false,
+      "duration_s": 0.069,
+      "error": null
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "admet.profile",
+      "args_summary": "n=7",
+      "ok": true,
+      "from_cache": false,
+      "duration_s": 0.014,
+      "error": null
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "dock",
+      "args_summary": "cand#1 in 1IEP",
+      "ok": false,
+      "from_cache": false,
+      "duration_s": 0.115,
+      "error": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "dock",
+      "args_summary": "cand#2 in 1IEP",
+      "ok": false,
+      "from_cache": false,
+      "duration_s": 0.086,
+      "error": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "dock",
+      "args_summary": "cand#3 in 1IEP",
+      "ok": false,
+      "from_cache": false,
+      "duration_s": 0.105,
+      "error": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "dock",
+      "args_summary": "cand#4 in 1IEP",
+      "ok": false,
+      "from_cache": false,
+      "duration_s": 0.102,
+      "error": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+    },
+    {
+      "agent": "Evaluator",
+      "tool": "dock",
+      "args_summary": "cand#6 in 1IEP",
+      "ok": false,
+      "from_cache": false,
+      "duration_s": 0.115,
+      "error": "Лиганд содержит вращаемые связи, а Meeko/Vina не установлены (план Б по риску R1: жёсткий докинг с TORSDOF 0 отключён)"
+    }
+  ],
+  "summary": "Кандидат с рангом rank=1 и интегральной оценкой score=0.612 (расчёт) (CN1CCN(CC2=CC(=O)NC=CC=CCC(Nc3nccc(-c4cccnc4)n3)=CC=C2)CC1, источник структуры: сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)) имеет показатели: LogP=3.15 (расчёт), QED=0.696 (расчёт), SA_Score=3.82 (расчёт), LogS=-4.66 log mol/L (прогноз, ESOL (Delaney 2004), линейная регрессия, AAE=0.83, n_train=2874), pIC50: не посчитано, dG: не посчитано. Кандидат с рангом rank=2 и интегральной оценкой score=0.5155 (расчёт) (CN1CCN(Cc2ccc(C(=O)Nc3cccc(Nc4nccc(-c5cccnc5)n4)c3)cc2)CC1, источник структуры: сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)) имеет показатели: LogP=4.28 (расчёт), QED=0.409 (расчёт), SA_Score=2.27 (расчёт), LogS=-5.54 log mol/L (прогноз, ESOL (Delaney 2004), линейная регрессия, AAE=0.83, n_train=2874), pIC50: не посчитано, dG: не посчитано. Кандидат с рангом rank=3 и интегральной оценкой score=0.3687 (расчёт) (C#CC(=CC=CC(=O)NC1=CC(=CC)C(Nc2nccc(-c3cccnc3)n2)=CC1)CN1CCN(C)CC1, источник структуры: сгенерировано selfies из Cc1ccc(NC(=O)c2ccc(CN3CCN(C)CC3)cc2)cc1Nc1nccc(-c2cccnc2)n1 (fallback: база фрагментов CReM недоступна)) имеет показатели: LogP=3.55 (расчёт), QED=0.321 (расчёт), SA_Score=3.73 (расчёт), LogS=-4.93 log mol/L (прогноз, ESOL (Delaney 2004), линейная регрессия, AAE=0.83, n_train=2874), pIC50: не посчитано, dG: не посчитано. Ограничения прогона: не вычислялось и не учитывалось в ранжировании: dG; Supervisor: LLM недоступна в текущем окружении, применён детерминированный разбор запроса; Generator (круг 1): LLM недоступна, применены дефолтные параметры (backend=crem, n=25); Evaluator: LLM недоступна, шортлист на докинг выбран детерминированно (top-5 по score); Reporter: LLM недоступна, интерпретация сформирована детерминированно по полям ScenarioResult.",
+  "limitations": [
+    "не вычислялось и не учитывалось в ранжировании: dG",
+    "Supervisor: LLM недоступна в текущем окружении, применён детерминированный разбор запроса",
+    "Generator (круг 1): LLM недоступна, применены дефолтные параметры (backend=crem, n=25)",
+    "Evaluator: LLM недоступна, шортлист на докинг выбран детерминированно (top-5 по score)",
+    "Reporter: LLM недоступна, интерпретация сформирована детерминированно по полям ScenarioResult"
+  ]
+}
