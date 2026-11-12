@@ -28,9 +28,9 @@ from src.tools.chem import describe
 ASPIRIN = "CC(=O)Oc1ccccc1C(=O)O"
 GRAY, GREEN, RED = "#888", "#1a7f37", "#cf222e"
 
-# ← перед защитой: поставить False, _run_real() пойдёт в src.graph.
-# Пока True — на экране фикстура (реальный RDKit по аспирину + маркер FIXTURE).
-USE_FIXTURE: bool = True
+# ← перед защитой: False. Фикстура остаётся только как аварийный запас,
+# если граф не поднимется на чужой машине.
+USE_FIXTURE: bool = False
 
 
 def _fixture() -> ScenarioResult:
@@ -102,13 +102,12 @@ def _fixture() -> ScenarioResult:
 
 
 def _run_real(query: str) -> ScenarioResult:
-    """TODO Р-C: return run_graph(query) из src.graph (OFFLINE=1).
-    Пока фикстура включена, сюда не попадаем. При USE_FIXTURE=False
-    падение громкое — по AGENTS.md, без пустого except."""
-    raise NotImplementedError(
-        "USE_FIXTURE=False, а _run_real() не реализован: "
-        "подключите run_graph() из src.graph (TODO Р-C)."
-    )
+    """Реальный прогон графа. Ошибку не глушим (AGENTS.md §6): если граф
+    упал, на экране должен быть виден трейсбек, а не молча фикстура,
+    выданная за результат."""
+    from src.graph import run_graph
+
+    return run_graph(query)
 
 
 def _render_values(cand: Candidate) -> None:
@@ -186,7 +185,27 @@ query = st.text_input(
 )
 if "result" not in st.session_state:
     st.session_state["result"] = _fixture() if USE_FIXTURE else None
-if st.button("Запустить"):
+PRESETS = {
+    "Сценарий 1 — оптимизация иматиниба":
+        "Модифицируй структуру иматиниба так, чтобы повысить растворимость "
+        "и сохранить сродство к BCR-ABL1, отфильтруй токсичные аналоги",
+    "Сценарий 2 — кандидаты под EGFR":
+        "Найди известные ингибиторы EGFR (UniProt P00533), обучи модель "
+        "активности и предложи 3 новых кандидата",
+    "Сценарий 3 — отказ при нехватке данных":
+        "Предложи ингибиторы для малоизученной мишени с малым числом "
+        "активностей в ChEMBL",
+}
+
+# Кнопки-пресеты, а не только свободный ввод: при OFFLINE=1 произвольный
+# запрос даст OfflineMiss и трейсбек на проекторе.
+cols = st.columns(len(PRESETS))
+for col, (label, preset) in zip(cols, PRESETS.items()):
+    if col.button(label, use_container_width=True):
+        query = preset
+        st.session_state["result"] = _fixture() if USE_FIXTURE else _run_real(preset)
+
+if st.button("Запустить свой запрос"):
     st.session_state["result"] = _fixture() if USE_FIXTURE else _run_real(query)
 
 result: ScenarioResult | None = st.session_state["result"]
