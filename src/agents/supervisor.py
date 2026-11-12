@@ -273,9 +273,12 @@ def _sanitize_task_against_query(raw_task: dict[str, Any], query: str) -> dict[s
         parent_name = parent_name.strip() or None
     else:
         parent_name = None
-    if parent_name and parent_name.lower() not in q_low and fallback["parent_name"]:
-        parent_name = fallback["parent_name"]
-    elif parent_name is None:
+    # §3.1 запрещает называть то, чего нет в запросе дословно. Для
+    # идентификаторов это закрыто _keep_if_literal, а имена оставались
+    # как есть: выдуманное parent_name при пустом фолбэке уезжало прямо
+    # в pubchem_smiles(). Правило одно для обоих имён: не дословно —
+    # берём разбор по тексту запроса, нет и его — ничего.
+    if parent_name is None or parent_name.lower() not in q_low:
         parent_name = fallback["parent_name"]
 
     target_name = raw_task.get("target_name")
@@ -283,7 +286,7 @@ def _sanitize_task_against_query(raw_task: dict[str, Any], query: str) -> dict[s
         target_name = target_name.strip() or None
     else:
         target_name = None
-    if target_name is None:
+    if target_name is None or target_name.lower() not in q_low:
         target_name = fallback["target_name"]
 
     parent_smiles = _keep_if_literal(raw_task.get("parent_smiles"))

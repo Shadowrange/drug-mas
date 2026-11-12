@@ -157,7 +157,16 @@ def parse_json_object(raw: str) -> dict[str, Any]:
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```$", "", text)
-    parsed = json.loads(text)
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        # «Вот JSON:\n```json\n{...}```» — обёртка не в начале строки, и
+        # срез префикса выше не срабатывает. Generator и Evaluator ретраев
+        # не имеют: один плохой разбор, и они молча берут дефолты.
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end <= start:
+            raise
+        parsed = json.loads(text[start : end + 1])
     if not isinstance(parsed, dict):
         raise ValueError(f"Ожидался JSON-объект (dict), получено: {type(parsed).__name__}")
     return parsed

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from src.cache import OfflineMiss
@@ -158,6 +160,61 @@ def _postfilter_insufficient_data_smiles(summary: str) -> tuple[str, bool]:
     return " ".join(kept_tokens), removed
 
 
+_NUM_RE = re.compile(r"-?\d+(?:[.,]\d+)?")
+
+
+def _allowed_numbers(result: ScenarioResult) -> set[str]:
+    """Числа, которые Reporter имеет право назвать: ровно поля объекта (§3.5)."""
+    def norm(x: object) -> str:
+        try:
+            f = float(str(x).replace(",", "."))
+        except (TypeError, ValueError):
+            return ""
+        return f"{f:g}"
+
+    out: set[str] = set()
+    for c in result.candidates:
+        for v in c.molecule.values:
+            if v.value is not None:
+                out.add(norm(v.value))
+            if v.model_metrics:
+                out.add(norm(v.model_metrics.metric_value))
+                out.add(norm(v.model_metrics.n_train))
+        for f in c.filters:
+            for tok in _NUM_RE.findall(f.threshold or ""):
+                out.add(norm(tok))
+            for tok in _NUM_RE.findall(f.detail or ""):
+                out.add(norm(tok))
+        out.add(norm(c.score))
+        out.add(norm(c.rank))
+    for md in result.missing:
+        for field in (md.found, md.needed):
+            for tok in _NUM_RE.findall(field or ""):
+                out.add(norm(tok))
+    out.add(norm(len(result.candidates)))
+    out.discard("")
+    return out
+
+
+def _extraneous_numbers(text: str, result: ScenarioResult) -> list[str]:
+    """Числа из текста, которых нет в объекте. Маленькие целые (счёт,
+    перечисление, годы) не считаем: они не выдают себя за результат."""
+    allowed = _allowed_numbers(result)
+    bad: list[str] = []
+    for tok in _NUM_RE.findall(text):
+        try:
+            f = float(tok.replace(",", "."))
+        except ValueError:
+            continue
+        if f.is_integer() and 0 <= abs(f) <= 10:
+            continue
+        if 1900 <= f <= 2100 and f.is_integer():
+            continue
+        if f"{f:g}" not in allowed and tok not in bad:
+            bad.append(tok)
+    return bad
+
+
 def reporter(state: GraphState) -> dict[str, Any]:
     """
     Узел Reporter (§2.5 Поправка 3, §2.6, §3.5).
@@ -218,8 +275,18 @@ def reporter(state: GraphState) -> dict[str, Any]:
     limitations = dedupe_strings(list(result.limitations) + notes)
     result = result.model_copy(update={"limitations": limitations})
 
-    # 2. Передача в LLM ТОЛЬКО валидированного и сериализованного ScenarioResult
-    serialized_result = result.model_dump_json(indent=2)
+    # 2. Передача в LLM ТОЛЬКО валидированного и сериализованного ScenarioResult.
+    # duration_s и from_cache меняются каждый прогон, а кэш ключуется по
+    # содержимому запроса. Оставь их — и завтра при OFFLINE=1 Reporter
+    # гарантированно промахнётся мимо кэша и покажет детерминированный текст
+    # вместо того, который вы проверили сегодня.
+    _stable = result.model_copy(update={
+        "tool_calls": [
+            tc.model_copy(update={"duration_s": None, "from_cache": False})
+            for tc in result.tool_calls
+        ]
+    })
+    serialized_result = _stable.model_dump_json(indent=2)
     try:
         summary_text = _cached_llm_call("Reporter", SYSTEM, serialized_result, json_mode=False, attempt=1)
     except (LLMUnavailableError, OfflineMiss):
@@ -237,7 +304,22 @@ def reporter(state: GraphState) -> dict[str, Any]:
         result = result.model_copy(update={"limitations": limitations})
         summary_text = _build_deterministic_summary(result)
 
-    # 3. Постфильтр SMILES на ветке insufficient_data (§2.6)
+    # 3. Постфильтр чисел: §3.5 держится только на промпте, а промпт — просьба.
+    # Vina не установлена, dG у всех not_computed, поэтому любое ΔG цифрой
+    # в тексте — чистая выдумка в поле, которое жюри читает как вывод системы.
+    extraneous = _extraneous_numbers(summary_text, result)
+    if extraneous:
+        limitations = dedupe_strings(
+            limitations
+            + [
+                "Постфильтр Reporter: в тексте LLM найдены числа, которых нет в ScenarioResult "
+                f"({', '.join(extraneous[:5])}); интерпретация заменена на детерминированную"
+            ]
+        )
+        result = result.model_copy(update={"limitations": limitations})
+        summary_text = _build_deterministic_summary(result)
+
+    # 4. Постфильтр SMILES на ветке insufficient_data (§2.6)
     if result.status == "insufficient_data":
         summary_text, had_smiles = _postfilter_insufficient_data_smiles(summary_text)
         if had_smiles:

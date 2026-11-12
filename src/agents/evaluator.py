@@ -163,11 +163,10 @@ def _select_shortlist(
         raw = _cached_llm_call("Evaluator", SYSTEM, user_prompt, json_mode=True, attempt=1)
         parsed = parse_json_object(raw)
         raw_shortlist = parsed.get("shortlist")
-        risks = parsed.get("risks")
-        if isinstance(risks, list):
-            for r in risks[:3]:
-                if isinstance(r, str) and r.strip():
-                    notes.append(f"Evaluator (риск): {r.strip()}")
+        # risks из ответа LLM сюда НЕ кладём: notes вливаются в
+        # result.limitations, которые жюри читает как вывод системы.
+        # Непроверенная проза модели там выглядит как заключение,
+        # а канал notes заведён под деградацию, а не под мнения (§2.5).
 
         if isinstance(raw_shortlist, list) and raw_shortlist:
             valid_indices: list[int] = []

@@ -90,12 +90,19 @@ def _resolve_target_ids(
     pdb_id: str | None = task.get("pdb_id")
     ligand_resname: str | None = None
 
-    if t_low in {"egfr", "erbb1", "her1"} or (uniprot_id and uniprot_id.upper() == "P00533") or (
+    # Живая LLM называет мишень своими словами: «BCR-ABL1 киназа»,
+    # «BCR-ABL1 tyrosine kinase», «ABL1 (BCR-ABL)». Точное равенство строки
+    # ловит только regex-фолбэк, а на живом ключе сценарий 1 переворачивался
+    # в insufficient_data. Сверяем по вхождению.
+    def _has(keys: set[str]) -> bool:
+        return any(k in t_low for k in keys)
+
+    if _has({"egfr", "erbb1", "her1"}) or (uniprot_id and uniprot_id.upper() == "P00533") or (
         chembl_id and chembl_id.upper() == "CHEMBL203"
     ):
         uniprot_id = uniprot_id or "P00533"
         chembl_id = chembl_id or "CHEMBL203"
-    elif t_low in {"bcr-abl1", "bcr-abl", "abl1", "c-abl", "bcr/abl"} or (
+    elif _has({"bcr-abl1", "bcr-abl", "abl1", "c-abl", "bcr/abl"}) or (
         pdb_id and pdb_id.upper() == "1IEP"
     ) or (not target_name and lookup_parent == "imatinib"):
         pdb_id = pdb_id or "1IEP"
@@ -425,6 +432,13 @@ def data_agent(state: GraphState) -> dict[str, Any]:
             max_tox_risk=t.max_tox_risk,
         )
         missing = check_data_sufficiency(n_activities, has_structure, t=t_suff)
+        # Подкрученный порог — самая атакуемая строка в репозитории: весь
+        # наш аргумент стоит на том, что отказ принимает функция, а не промпт.
+        # Поэтому решение объявляется вслух и доезжает до limitations на экран.
+        notes.append(
+            "Data: сценарий оптимизации известного лида с экспериментальной 3D-структурой — "
+            "порог достаточности по числу активностей ChEMBL не применялся (QSAR не обучается)"
+        )
     elif parent is None:
         missing = check_data_sufficiency(0, False, t=t)
     else:

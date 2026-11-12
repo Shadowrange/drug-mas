@@ -326,3 +326,48 @@ def test_target_extraction_keeps_real_gene_symbols():
     assert _extract_target_name("Найди известные ингибиторы EGFR (UniProt P00533)") == "EGFR"
     assert _extract_target_name("сохранив сродство к BCR-ABL1") == "BCR-ABL1"
     assert _extract_target_name("Предложи ингибиторы для мишени CDK2") == "CDK2"
+
+
+# --- правки по итогам ревью перед первым живым прогоном LLM ---
+
+def test_target_resolved_when_llm_renames_it():
+    """Живая LLM говорит «BCR-ABL1 киназа». Точное равенство строки
+    переворачивало сценарий 1 в insufficient_data."""
+    from src.agents.data_agent import _resolve_target_ids
+
+    for name in ("BCR-ABL1", "BCR-ABL1 киназа", "BCR-ABL1 tyrosine kinase", "ABL1 (BCR-ABL)"):
+        _, _, pdb, resname = _resolve_target_ids({"target_name": name}, "lead_optimization", "imatinib")
+        assert pdb == "1IEP" and resname == "STI", name
+
+    for name in ("EGFR", "EGFR kinase", "рецептор EGFR"):
+        uni, chembl, _, _ = _resolve_target_ids({"target_name": name}, "target_to_hit", None)
+        assert uni == "P00533" and chembl == "CHEMBL203", name
+
+
+def test_json_parsed_through_prose_wrapper():
+    """Generator и Evaluator ретраев не имеют: один плохой разбор — и дефолты."""
+    from src.graph_state import parse_json_object
+
+    assert parse_json_object('Вот JSON:\n```json\n{"backend": "selfies"}\n```')["backend"] == "selfies"
+    assert parse_json_object('Ответ: {"n": 30} — всё')["n"] == 30
+
+
+def test_reporter_rejects_invented_numbers():
+    """ΔG цифрой в тексте — выдумка: Vina не установлена, dG not_computed."""
+    from src.agents.reporter import _extraneous_numbers
+    from src.schemas import ScenarioResult
+
+    res = ScenarioResult(status="no_candidates_passed", query="q", scenario="s", candidates=[])
+    assert _extraneous_numbers("Энергия связывания составила -9.4 ккал/моль", res)
+    assert not _extraneous_numbers("Кандидатов, прошедших пороги, нет.", res)
+
+
+def test_supervisor_drops_invented_names():
+    from src.agents.supervisor import _sanitize_task_against_query
+
+    task = _sanitize_task_against_query(
+        {"parent_name": "гефитиниб", "target_name": "KRAS"},
+        "Модифицируй структуру иматиниба, сохранив сродство к BCR-ABL1",
+    )
+    assert task["parent_name"] != "гефитиниб"
+    assert task["target_name"] != "KRAS"
