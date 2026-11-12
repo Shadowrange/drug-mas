@@ -1,7 +1,6 @@
-"""
-Тесты графа и агентов (блок A1, docs/GRAPH-CONTRACT.md).
+"""Интеграционные и модульные тесты мультиагентного графа `LangGraph` и узлов-агентов.
 
-Запуск: python -m pytest -q
+Запуск: `OFFLINE=1 python -m pytest -q`
 """
 
 from __future__ import annotations
@@ -328,7 +327,7 @@ def test_target_extraction_keeps_real_gene_symbols():
     assert _extract_target_name("Предложи ингибиторы для мишени CDK2") == "CDK2"
 
 
-# --- правки по итогам ревью перед первым живым прогоном LLM ---
+# --- 5. Устойчивость разбора синонимов мишеней, обёрток JSON и постфильтров ---
 
 def test_target_resolved_when_llm_renames_it():
     """Живая LLM говорит «BCR-ABL1 киназа». Точное равенство строки

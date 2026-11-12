@@ -1,6 +1,9 @@
-"""Data Agent. ВЛАДЕЛЕЦ: Р-B. Блок A1.
-Тянет SMILES, активности, структуру мишени, координаты бокса. Обучает QSAR при достаточной выборке.
-ОБЯЗАТЕЛЬНО вызывает verifier.check_data_sufficiency ДО передачи в Generator."""
+"""Узел `Data Agent`: опрос биомедицинских баз данных, подготовка рецептора и обучение QSAR.
+
+Выполняет каскадный опрос PubChem, UniProt, ChEMBL и RCSB PDB через декоратор `@cached`,
+обучает QSAR-модель при наличии достаточной выборки ($n \\ge 100$) и вызывает
+детерминированную проверку достаточности данных `verifier.check_data_sufficiency`.
+"""
 
 from __future__ import annotations
 
@@ -90,10 +93,8 @@ def _resolve_target_ids(
     pdb_id: str | None = task.get("pdb_id")
     ligand_resname: str | None = None
 
-    # Живая LLM называет мишень своими словами: «BCR-ABL1 киназа»,
-    # «BCR-ABL1 tyrosine kinase», «ABL1 (BCR-ABL)». Точное равенство строки
-    # ловит только regex-фолбэк, а на живом ключе сценарий 1 переворачивался
-    # в insufficient_data. Сверяем по вхождению.
+    # Сопоставление синонимов и текстовых описаний мишеней (например, «BCR-ABL1 киназа»,
+    # «EGFR tyrosine kinase») со стандартными идентификаторами UniProt, ChEMBL и PDB.
     def _has(keys: set[str]) -> bool:
         return any(k in t_low for k in keys)
 
@@ -432,9 +433,8 @@ def data_agent(state: GraphState) -> dict[str, Any]:
             max_tox_risk=t.max_tox_risk,
         )
         missing = check_data_sufficiency(n_activities, has_structure, t=t_suff)
-        # Подкрученный порог — самая атакуемая строка в репозитории: весь
-        # наш аргумент стоит на том, что отказ принимает функция, а не промпт.
-        # Поэтому решение объявляется вслух и доезжает до limitations на экран.
+        # Фиксируем в limitations, что в сценарии оптимизации известного лида при наличии
+        # 3D-структуры мишени обучение QSAR по ChEMBL не требовалось.
         notes.append(
             "Data: сценарий оптимизации известного лида с экспериментальной 3D-структурой — "
             "порог достаточности по числу активностей ChEMBL не применялся (QSAR не обучается)"

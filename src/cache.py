@@ -1,11 +1,8 @@
-"""
-Кэш всех внешних вызовов. ВЛАДЕЛЕЦ: Р-B.
+"""Файловый кэш внешних вызовов (базы данных и LLM) и поддержка автономного режима `OFFLINE=1`.
 
-Зачем: на защите может не быть сети. OFFLINE=1 заставляет систему брать
-только из кэша и падать с понятной ошибкой, если чего-то нет.
-
-ПРАВИЛО: ни один вызов к ChEMBL / PubChem / PDB / UniProt / LLM
-не делается в обход этого декоратора. Прямой requests.get ломает демо.
+Все обращения к ChEMBL, PubChem, PDB, UniProt и LLM обёрнуты декоратором `@cached`.
+При `OFFLINE=1` данные считываются исключительно из локальной директории `cache/`,
+что гарантирует детерминированную воспроизводимость без доступа к сети.
 """
 
 from __future__ import annotations
@@ -19,8 +16,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-# Атрибут функции перезаписывался бы параллельными ветками графа, и бейдж
-# «из кэша» врал бы именно в том слое, который мы показываем жюри.
+# Контекстная переменная для потокобезопасной фиксации источника последнего вызова (кэш / сеть)
 LAST_FROM_CACHE: contextvars.ContextVar[bool] = contextvars.ContextVar("last_from_cache", default=False)
 
 CACHE_DIR = Path(os.getenv("CACHE_DIR", Path(__file__).resolve().parent.parent / "cache"))
@@ -30,7 +26,7 @@ OFFLINE = os.getenv("OFFLINE", "0") == "1"
 
 
 class OfflineMiss(RuntimeError):
-    """OFFLINE=1, а в кэше этого нет. Значит, кэш не прогрет."""
+    """Запрошенная запись отсутствует в локальном кэше при включённом режиме OFFLINE=1."""
 
 
 def _key(namespace: str, args: tuple, kwargs: dict) -> str:
@@ -39,12 +35,7 @@ def _key(namespace: str, args: tuple, kwargs: dict) -> str:
 
 
 def cached(namespace: str) -> Callable:
-    """
-    @cached("chembl_activities")
-    def fetch(target_id: str) -> dict: ...
-
-    Кэш вечный: на хакатоне данные не протухают, а повторный вызов стоит времени.
-    """
+    """Декоратор файлового кэширования JSON-сериализуемых результатов по пространству имён."""
 
     def deco(fn: Callable) -> Callable:
         @functools.wraps(fn)
@@ -64,10 +55,8 @@ def cached(namespace: str) -> Callable:
 
             t0 = time.time()
             result = fn(*args, **kwargs)
-            # БЕЗ default=str: numpy-float молча стал бы строкой "7.21", после
-            # перезапуска из кэша Molecule.numeric() вернул бы None, фильтр стал бы
-            # «не посчитано», и офлайн-прогон на защите вёл бы себя иначе, чем живой.
-            # Пусть падает громко здесь, а не на проекторе.
+            # Сериализация без default=str гарантирует сохранение строгих числовых типов
+            # (например, исключает неявное превращение numpy-float в строку).
             path.write_text(
                 json.dumps(
                     {
@@ -92,7 +81,7 @@ def cached(namespace: str) -> Callable:
 
 
 def cache_stats() -> dict[str, int]:
-    """Для проверки перед защитой: что вообще лежит в кэше."""
+    """Возвращает количество закэшированных записей в разбивке по пространствам имён."""
     stats: dict[str, int] = {}
     for f in CACHE_DIR.glob("*.json"):
         ns = f.stem.split("__")[0]

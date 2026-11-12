@@ -1,6 +1,6 @@
-"""Сборка LangGraph. ВЛАДЕЛЕЦ: Р-B. Блок A1.
+"""Сборка и компиляция мультиагентного графа `LangGraph` (`StateGraph[GraphState]`).
 
-Схема с учётом поправок §2.5 и §2.6 docs/GRAPH-CONTRACT.md:
+Топология графа:
 
     START -> supervisor -> data_agent -> route_sufficiency
                                            |-- missing     --> reporter -> END
@@ -47,22 +47,19 @@ _ORIG_REPORTER = reporter
 
 
 def route_sufficiency(state: GraphState) -> str:
-    """Роутер достаточности данных (§2): непустой missing -> reporter, иначе generator."""
+    """Роутер достаточности данных: при непустом `missing` направляет в `reporter`, иначе в `generator`."""
     return "reporter" if state.get("missing") else "generator"
 
 
 def route_generated(state: GraphState) -> str:
-    """Роутер после генератора (§2.5 Поправка 1, §2.6)."""
+    """Роутер после генератора: при пустой выдаче повторяет генерацию со сменой backend (до MAX_LOOPS)."""
     if state.get("generated"):
         return "evaluator"
     return "generator" if int(state.get("loop", 0)) < MAX_LOOPS else "reporter"
 
 
 def route_verify(state: GraphState) -> str:
-    """
-    Роутер после верификатора (§2.6).
-    Наличие выживших проверяется РАНЬШЕ лимита кругов.
-    """
+    """Роутер после верификатора: при наличии прошедших кандидатов или исчерпании кругов ведёт в `reporter`."""
     rep = state.get("verification")
     if rep is not None and rep.passed:
         return "reporter"          # passed
@@ -72,10 +69,7 @@ def route_verify(state: GraphState) -> str:
 
 
 def verifier_node(state: GraphState) -> dict[str, Any]:
-    """
-    Узел верификатора (§2, §2.5 Поправка 2, §2.6).
-    Не LLM — обёртка над verifier.verify с накоплением passed_all, rejected_all, unverifiable_all.
-    """
+    """Детерминированный узел верификации кандидатов с накоплением результатов по итерациям."""
     t = state.get("thresholds") or Thresholds()
     rep = verify(state.get("candidates") or [], state.get("tool_calls") or [], t=t)
 
@@ -97,7 +91,7 @@ _ORIG_VERIFIER_NODE = verifier_node
 
 
 def build_graph(thresholds: Thresholds | None = None):
-    """Собирает и компилирует StateGraph(GraphState) строго по §2.6."""
+    """Собирает и компилирует `StateGraph(GraphState)`."""
 
     def _inject_thresholds(state: GraphState) -> GraphState:
         if thresholds is not None and state.get("thresholds") is None:

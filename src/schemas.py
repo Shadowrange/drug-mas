@@ -1,13 +1,14 @@
-"""
-КОНТРАКТ ДАННЫХ ВСЕЙ СИСТЕМЫ. ВЛАДЕЛЕЦ: Р-B. ЗАМОРОЖЕН.
+"""Контракт данных и модели происхождения значений (`Pydantic v2`).
 
-Это несущая конструкция требования №5 из ТЗ: система обязана прозрачно
-различать реальные расчёты, предсказания и гипотезы.
+Обеспечивает на уровне типов строгое разделение между записями баз данных (`DATABASE`),
+детерминированными расчётами (`COMPUTED`), предсказаниями моделей (`PREDICTED`)
+и неподтверждёнными гипотезами (`HYPOTHESIS`).
 
-Проверка живёт ЗДЕСЬ, в типах, а не в промпте агента. Агент физически
-не может вернуть число без указания происхождения — Pydantic не даст.
-
-Менять этот файл может только Р-B и только после поста [decision] на доску.
+Инварианты:
+- Любое значение обязано иметь непустой источник (`source`) и категорию `Provenance`.
+- Значение с `provenance=PREDICTED` обязано сопровождаться метриками модели (`ModelMetrics`).
+- Значение с `provenance=HYPOTHESIS` не может содержать числовую величину (`value` обязано быть `None`).
+- При `status="insufficient_data"` список кандидатов обязан быть пустым, а `missing` — непустым.
 """
 
 from __future__ import annotations
@@ -19,16 +20,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Provenance(str, Enum):
-    """Откуда взялось значение. Четыре категории, пятой не бывает."""
+    """Категория происхождения значения."""
 
-    DATABASE = "database"      # запись из ChEMBL / PubChem / PDB / UniProt
-    COMPUTED = "computed"      # детерминированный расчёт: RDKit, AutoDock Vina
-    PREDICTED = "predicted"    # прогноз ML-модели, обязаны быть метрики модели
-    HYPOTHESIS = "hypothesis"  # рассуждение LLM, числом не подкреплено
+    DATABASE = "database"      # Запись из ChEMBL / PubChem / PDB / UniProt
+    COMPUTED = "computed"      # Детерминированный расчёт (RDKit, AutoDock Vina)
+    PREDICTED = "predicted"    # Предсказание эмпирической или ML-модели (требует ModelMetrics)
+    HYPOTHESIS = "hypothesis"  # Текстовая гипотеза без числового значения
 
     @property
     def badge(self) -> str:
-        """Для отображения во фронте."""
+        """Текстовый бейдж категории для отображения в пользовательском интерфейсе."""
         return {
             "database": "🗄 БД",
             "computed": "🧮 РАСЧЁТ",
@@ -38,7 +39,7 @@ class Provenance(str, Enum):
 
 
 class ModelMetrics(BaseModel):
-    """Качество ML-модели. Без этого предсказание не является аргументом."""
+    """Паспортные метрики качества эмпирической или ML-модели."""
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -50,11 +51,10 @@ class ModelMetrics(BaseModel):
 
 
 class Value(BaseModel):
-    """
-    Любое число или факт в системе. Нет provenance — нет значения.
+    """Типизированное значение свойства молекулы с обязательной атрибуцией источника.
 
-    value=None означает «не посчитано». Это НЕ то же самое, что «не прошло
-    порог», и верификатор обязан различать эти два случая — см. verifier.py.
+    `value=None` означает, что свойство не вычислялось (`not_computed`), и отличается
+    от отрицательного результата прохождения порога.
     """
 
     model_config = ConfigDict(use_enum_values=False)
@@ -180,7 +180,7 @@ class ScenarioResult(BaseModel):
         return self
 
 
-# --- хелперы, чтобы заполнение provenance было короче, чем его пропуск ---
+# --- Вспомогательные конструкторы объектов Value ---
 
 def computed(name: str, value: Any, source: str, units: str | None = None, note: str | None = None) -> Value:
     return Value(name=name, value=value, units=units, provenance=Provenance.COMPUTED, source=source, note=note)

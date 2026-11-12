@@ -1,8 +1,6 @@
-"""
-Тесты детерминированного слоя. ВЛАДЕЛЕЦ: Р-A.
+"""Модульные тесты детерминированного хемоинформатического слоя, верификатора и инструментов.
 
-Запуск:  python -m pytest -q
-Эти тесты — страховка от того, что правка в chem.py тихо сломает Evaluator в 3 часа ночи.
+Запуск: `OFFLINE=1 python -m pytest -q`
 """
 
 import pytest
@@ -94,7 +92,7 @@ def test_sufficient_data_passes():
     assert check_data_sufficiency(n_activities=800, has_structure=True) == []
 
 
-# --- дыры, найденные при ревью: каждая закрыта тестом ---
+# --- Проверка инвариантов верификатора и защиты от неподтверждённых данных ---
 
 from src.schemas import Candidate, Provenance, ToolCall, Value, computed, predicted
 from src.verifier import build_result, check_provenance, verify

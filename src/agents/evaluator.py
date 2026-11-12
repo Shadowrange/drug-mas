@@ -1,6 +1,9 @@
-"""Evaluator. ВЛАДЕЛЕЦ: Р-B. Блок A1.
-chem.run_all_filters -> admet.profile -> docking.dock -> многопараметрическое ранжирование.
-Всё, что не посчиталось, помечает not_computed и НЕ участвует в score."""
+"""Узел `Evaluator`: расчёт физико-химических дескрипторов, ADMET-профиля, QSAR, докинга и `score`.
+
+Последовательно запускает `chem.run_all_filters`, `admet.profile`, `qsar.predict` и `docking.dock`
+(для шортлиста до 5 молекул), после чего вычисляет интегральный рейтинг `score` по доступным
+значениям (свойства со статусом `not_computed` не обнуляют рейтинг, а их веса перераспределяются).
+"""
 
 from __future__ import annotations
 
@@ -163,10 +166,8 @@ def _select_shortlist(
         raw = _cached_llm_call("Evaluator", SYSTEM, user_prompt, json_mode=True, attempt=1)
         parsed = parse_json_object(raw)
         raw_shortlist = parsed.get("shortlist")
-        # risks из ответа LLM сюда НЕ кладём: notes вливаются в
-        # result.limitations, которые жюри читает как вывод системы.
-        # Непроверенная проза модели там выглядит как заключение,
-        # а канал notes заведён под деградацию, а не под мнения (§2.5).
+        # Текстовые замечания модели (risks) не добавляются в notes/limitations,
+        # так как канал notes предназначен исключительно для технических уведомлений о деградации.
 
         if isinstance(raw_shortlist, list) and raw_shortlist:
             valid_indices: list[int] = []

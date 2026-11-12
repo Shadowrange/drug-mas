@@ -1,9 +1,8 @@
-"""
-Объект состояния графа и общие типы оркестрации. ВЛАДЕЛЕЦ: Р-B. Блок A1.
+"""Типизированное состояние мультиагентного графа (`GraphState`) и клиент вызовов LLM.
 
-Редьюсер `operator.add` задан только у `tool_calls`, остальные поля
-перезаписываются последним писателем (см. docs/GRAPH-CONTRACT.md §1, §2.5).
-Все вызовы к внешнему LLM проходят строго через `@cached("llm")` из `src/cache.py`.
+Редьюсер `operator.add` задан для журнала `tool_calls` (только добавление новых записей),
+остальные поля состояния обновляются узлами напрямую (см. `docs/GRAPH-CONTRACT.md`).
+Все обращения к LLM проходят через декоратор `@cached("llm")` из `src/cache.py`.
 """
 
 from __future__ import annotations
@@ -57,12 +56,12 @@ class GraphState(TypedDict, total=False):
     summary: str
     result: ScenarioResult | None
 
-    # Поля из §2.5 (поправки 1–3)
+    # Накопительные поля между итерациями генерации и верификации
     unverifiable_all: list[str]
     passed_all: list[Candidate]
     notes: list[str]
 
-    # Опциональные пороги верификатора (например, для теста с max_logp=-99)
+    # Пользовательские пороги верификатора (опционально)
     thresholds: Thresholds | None
 
 
@@ -160,9 +159,7 @@ def parse_json_object(raw: str) -> dict[str, Any]:
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
-        # «Вот JSON:\n```json\n{...}```» — обёртка не в начале строки, и
-        # срез префикса выше не срабатывает. Generator и Evaluator ретраев
-        # не имеют: один плохой разбор, и они молча берут дефолты.
+        # Извлечение JSON-объекта, если ответ модели содержит вводный текст перед блоком кода
         start, end = text.find("{"), text.rfind("}")
         if start == -1 or end <= start:
             raise

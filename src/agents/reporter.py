@@ -1,7 +1,8 @@
-"""Reporter. ВЛАДЕЛЕЦ: Р-B. Блок A1.
+"""Узел `Reporter`: сборка финального `ScenarioResult` и формирование текстового резюме (`summary`).
 
-Единственный агент, пишущий свободный текст. Его текст идёт в поле summary
-и на фронте помечается как ИНТЕРПРЕТАЦИЯ, отдельно от таблицы данных.
+Сначала детерминированно собирает валидированный объект `ScenarioResult` через `verifier.build_result`,
+затем передаёт сериализованный объект в LLM для генерации связной интерпретации и проверяет
+результирующий текст кодовыми постфильтрами на отсутствие посторонних чисел и SMILES (в режиме отказа).
 """
 
 from __future__ import annotations
@@ -160,9 +161,8 @@ def _postfilter_insufficient_data_smiles(summary: str) -> tuple[str, bool]:
     return " ".join(kept_tokens), removed
 
 
-# Число не должно выцепляться из идентификатора: «pIC50» давало 50,
-# «CHEMBL203» давало 203, и постфильтр ложно срабатывал, подменяя
-# нормальный текст LLM детерминированным.
+# Регулярное выражение для извлечения отдельно стоящих чисел (игнорирует цифры внутри
+# идентификаторов и названий метрик вроде pIC50, CHEMBL203, CYP3A4, 1IEP).
 _NUM_RE = re.compile(r"(?<![A-Za-zА-Яа-яЁё0-9_])-?\d+(?:[.,]\d+)?")
 
 
@@ -278,11 +278,9 @@ def reporter(state: GraphState) -> dict[str, Any]:
     limitations = dedupe_strings(list(result.limitations) + notes)
     result = result.model_copy(update={"limitations": limitations})
 
-    # 2. Передача в LLM ТОЛЬКО валидированного и сериализованного ScenarioResult.
-    # duration_s и from_cache меняются каждый прогон, а кэш ключуется по
-    # содержимому запроса. Оставь их — и завтра при OFFLINE=1 Reporter
-    # гарантированно промахнётся мимо кэша и покажет детерминированный текст
-    # вместо того, который вы проверили сегодня.
+    # 2. Передача в LLM только валидированного и сериализованного ScenarioResult.
+    # Поля duration_s и from_cache нормализуются перед сериализацией, чтобы ключ
+    # кэша @cached("llm") зависел только от содержательных результатов прогона.
     _stable = result.model_copy(update={
         "tool_calls": [
             tc.model_copy(update={"duration_s": None, "from_cache": False})
@@ -307,9 +305,8 @@ def reporter(state: GraphState) -> dict[str, Any]:
         result = result.model_copy(update={"limitations": limitations})
         summary_text = _build_deterministic_summary(result)
 
-    # 3. Постфильтр чисел: §3.5 держится только на промпте, а промпт — просьба.
-    # Vina не установлена, dG у всех not_computed, поэтому любое ΔG цифрой
-    # в тексте — чистая выдумка в поле, которое жюри читает как вывод системы.
+    # 3. Кодовый постфильтр чисел: проверяет, что в тексте LLM нет числовых значений,
+    # отсутствующих в полях валидированного объекта ScenarioResult.
     extraneous = _extraneous_numbers(summary_text, result)
     if extraneous:
         limitations = dedupe_strings(

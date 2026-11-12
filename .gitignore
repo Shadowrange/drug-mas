@@ -4,13 +4,8 @@ __pycache__/
 venv/
 .env
 .pytest_cache/
+.idea/
 *.pdbqt
 *.sdf
 crem_db/
 !cache/
-
-docs/PLAN-case1-sintez.md
-docs/FINAL-SPRINT.md
-docs/TEAM-AGENT-RULES.md
-docs/BOARD.md
-TASKS.md
