@@ -8,3 +8,9 @@ venv/
 *.sdf
 crem_db/
 !cache/
+
+docs/PLAN-case1-sintez.md
+docs/FINAL-SPRINT.md
+docs/TEAM-AGENT-RULES.md
+docs/BOARD.md
+TASKS.md

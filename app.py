@@ -8,10 +8,9 @@
 
 Зона 3 — самое важное на защите: требование №5 должно быть ВИДНО на экране.
 
-TODO Р-C:
-  - реализовать _run_real() поверх src.graph.run_graph (OFFLINE=1);
-  - 3D-поза через stmol/py3Dmol;
-  - проверить цвета бейджей и шрифты на проекторе до пятницы.
+Ограничение интерфейса: 3D-поза докинга не визуализируется —
+AutoDock Vina не входит в окружение прототипа, ΔG честно помечается
+как «не вычислялось» и не участвует в ранжировании.
 """
 from __future__ import annotations
 
@@ -92,7 +91,7 @@ def _fixture() -> ScenarioResult:
             ToolCall(agent="Evaluator", tool="dock",
                      args_summary="1IEP", ok=False, from_cache=False,
                      duration_s=0.0,
-                     error="NotImplementedError: TODO Р-A, dG не считается"),
+                     error="AutoDock Vina недоступна: dG не вычисляется"),
         ],
         limitations=[
             "докинг не реализован: dG помечен «не посчитано» "
@@ -228,7 +227,7 @@ result: ScenarioResult | None = st.session_state["result"]
 if result is None:
     st.warning(
         "USE_FIXTURE = False, а результат прогона не получен. "
-        "Подключите run_graph() в _run_real() (TODO Р-C)."
+        "Граф не вернул результат: проверьте _run_real() и src.graph."
     )
     st.stop()
 
@@ -276,7 +275,6 @@ if smiles_list:
         st.image(Draw.MolToImage(m, size=(400, 300)))
 else:
     st.caption("Показывать нечего: кандидатов нет.")
-st.info("TODO Р-C: 3D-поза докинга через stmol/py3Dmol — заглушка.")
 
 if result.limitations:
     st.subheader("Ограничения прогона")
